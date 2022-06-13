@@ -1,0 +1,14 @@
+===graph creation===
+
+making isnad embedding graph with surface form heuristic without intradoc links
+python makeGraphsMemoryEfficient.py --noIntradocLinks --suffix NERTags_noIntraDoc data/namesWithEmbeddings_NER_strict.json mentionGraphs_weighted/
+
+making isnad embedding graph using kNN without intradoc links
+python makeGraphsMemoryEfficient.py --kNN --noIntradocLinks --suffix NERTags_noIntraDoc data/namesWithEmbeddings_NER_strict.json mentionGraphs_weighted/
+
+===community detection===
+label propagation on full isnad dataset without intradoc links
+python detectCommunities.py --algorithm lp data/namesWithEmbeddings_NER_strict.json mentionGraphs_weighted/multiplier1_NERTags_noIntraDoc.npz communities_weighted/multiplier1_lp_NERTags_noIntraDoc.json
+
+as above, but leiden
+python detectCommunities.py --algorithm leiden data/namesWithEmbeddings_NER_strict.json mentionGraphs_weighted/multiplier1_NERTags_noIntraDoc.npz communities_weighted/multiplier1_leiden_NERTags_noIntraDoc.json
