@@ -1,0 +1,89 @@
+====surface form graphs=====
+
+creating data for the training set using the surface form heuristic
+ graph with multiplier 1 and tuned embeddings
+
+python makeAntecedentTrainingData-embeddings.py --training data/trainTestSplits/tuned/train.json antecedents/antecedents_train.json mentionGraphs_trainTestSplits/tuned/train/multiplier1.npz classificationData/tuned/train_multiplier1.json
+
+As above, but for dev
+
+python makeAntecedentTrainingData-embeddings.py data/trainTestSplits/tuned/dev.json antecedents/antecedents_dev.json mentionGraphs_trainTestSplits/tuned/dev/multiplier1.npz classificationData/tuned/dev_multiplier1.json
+
+As above but for test
+
+python makeAntecedentTrainingData-embeddings.py data/trainTestSplits/tuned/test.json antecedents/antecedents_test.json mentionGraphs_trainTestSplits/tuned/test/multiplier1.npz classificationData/tuned/test_multiplier1.json
+
+creating data for the training set using the surface form heuristic
+ graph with multiplier 1 and untuned embeddings
+
+python makeAntecedentTrainingData-embeddings.py --training data/trainTestSplits/base/train.json antecedents/antecedents_train.json mentionGraphs_trainTestSplits/base/train/multiplier1.npz classificationData/base/train_multiplier1.json
+
+As above but for dev
+
+python makeAntecedentTrainingData-embeddings.py data/trainTestSplits/base/dev.json antecedents/antecedents_dev.json mentionGraphs_trainTestSplits/base/dev/multiplier1.npz classificationData/base/dev_multiplier1.json
+
+As above but for test
+
+python makeAntecedentTrainingData-embeddings.py data/trainTestSplits/base/test.json antecedents/antecedents_test.json mentionGraphs_trainTestSplits/base/test/multiplier1.npz classificationData/base/test_multiplier1.json
+
+=====kNN graphs=====
+creating data for the training set using the kNN (k=5)
+ graph with tuned embeddings
+
+python makeAntecedentTrainingData-embeddings.py --training data/trainTestSplits/tuned/train.json antecedents/antecedents_train.json mentionGraphs_trainTestSplits/tuned/train/kNN5.npz classificationData/tuned/train_kNN5.json
+
+As above, but for dev
+
+python makeAntecedentTrainingData-embeddings.py data/trainTestSplits/tuned/dev.json antecedents/antecedents_dev.json mentionGraphs_trainTestSplits/tuned/dev/kNN5.npz classificationData/tuned/dev_kNN5.json
+
+As above but for test
+
+python makeAntecedentTrainingData-embeddings.py data/trainTestSplits/tuned/test.json antecedents/antecedents_test.json mentionGraphs_trainTestSplits/tuned/test/kNN5.npz classificationData/tuned/test_kNN5.json
+
+creating data for the training set using the kNN (k=5)
+ graph with untuned embeddings
+
+python makeAntecedentTrainingData-embeddings.py --training data/trainTestSplits/base/train.json antecedents/antecedents_train.json mentionGraphs_trainTestSplits/base/train/kNN5.npz classificationData/base/train_kNN5.json
+
+As above but for dev
+
+python makeAntecedentTrainingData-embeddings.py data/trainTestSplits/base/dev.json antecedents/antecedents_dev.json mentionGraphs_trainTestSplits/base/dev/kNN5.npz classificationData/base/dev_kNN5.json
+
+As above but for test
+
+python makeAntecedentTrainingData-embeddings.py data/trainTestSplits/base/test.json antecedents/antecedents_test.json mentionGraphs_trainTestSplits/base/test/kNN5.npz classificationData/base/test_kNN5.json
+
+===ignore graphs, use k nearest===
+Creating training data using the nearest 20 positive and negative examples
+ for each mention and tuned embeddings (will take a bit but it is somewhat 
+ unoptimized) (also, the choice of network is irrelevant)
+
+python makeAntecedentTrainingData-embeddings.py --kNearest --k 20 data/trainTestSplits/tuned/train.json antecedents/antecedents_train.json mentionGraphs_trainTestSplits/base/train/kNN5.npz classificationData/tuned/train_nearest20.json
+
+(untuned, as above otherwise)
+python makeAntecedentTrainingData-embeddings.py --kNearest --k 20 data/trainTestSplits/base/train.json antecedents/antecedents_train.json mentionGraphs_trainTestSplits/base/train/kNN5.npz classificationData/base/train_nearest20.json
+
+Training tuned antecedent classifier (might take ages, even reading in the data is slow for the surface form graphs)
+
+surface form, multiplier=1
+python trainAntecedentClassifier-embeddings.py classificationData/tuned/train_multiplier1.json classificationData/tuned/dev_multiplier1.json classificationData/models/tuned_surfaceForm1.pt classificationData/output_dev_surfaceForm1.json
+
+kNN, k=5
+python trainAntecedentClassifier-embeddings.py classificationData/tuned/train_kNN5.json classificationData/tuned/dev_kNN5.json classificationData/models/tuned_kNN5.pt classificationData/output_dev_kNN5.json
+
+kNN, k=5, graph neighbors only
+python trainAntecedentClassifier-embeddings.py classificationData/tuned/train_kNN5_graphOnly.json classificationData/tuned/dev_kNN5.json classificationData/models/tuned_kNN5.pt classificationData/output_dev_kNN5.json
+
+kNN, k=15, graph neighbors only
+python trainAntecedentClassifier-embeddings.py classificationData/tuned/train_kNN15_graphOnly.json classificationData/tuned/dev_kNN15.json classificationData/models/tuned_kNN15.pt classificationData/output_dev_kNN15.json
+
+k nearest, ignoring graph, using the 15NN network data as dev set as in above
+python trainAntecedentClassifier-embeddings.py classificationData/tuned/train_nearest20.json classificationData/tuned/dev_kNN15.json classificationData/models/tuned_nearest20.pt classificationData/output_dev_nearest20_500epoch.json
+
+k nearest, ignoring graph, using 15NN network data as dev set, all untuned
+python trainAntecedentClassifier-embeddings.py classificationData/base/train_nearest20.json classificationData/base/dev_kNN15.json classificationData/models/untuned_nearest20.pt classificationData/output_dev_untuned_nearest20_500epoch.json
+
+===Inferring clusters using antecedent classifier===
+
+(tuned embeddings, model, 15NN network for antecedent candidates)
+python inferClustersWithPairClassifier.py data/trainTestSplits/tuned/test.json mentionGraphs_trainTestSplits/tuned/test/kNN15.npz classificationData/models/tuned_nearest20.pt communities_trainTestSplits/tuned/antecedent_nearest20_kNN15.json
