@@ -1,1 +1,4 @@
-DESCRIPTION HERE
+The two CSV files (names.csv and names_disambiguated.csv) collective store the data about which surface forms correspond to which individuals.
+ Each row represents an isand, and all the colums beginning with "names" reprent the sequence of names in the isnad, one name per cell. If a name in 
+ names_disambiguated is in english, the name in the same cell in names.csv is a surface form of that individual. If it is left in arabic script, the
+ name is still ambiguous.
