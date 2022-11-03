@@ -8,7 +8,12 @@ GOLD_JSON_PATH = "communities/goldStandard_goldTags.json"
 NAMES_CSV_PATH = "nameData/names.csv"
 
 if __name__ == "__main__":
+    isnad_lengths = []
+        
+    statuses = []
+
     isnads_names = []
+
     with open(NAMES_CSV_PATH) as names_csv_file:
         reader = csv.reader(names_csv_file)
         for row_i, row in enumerate(reader):
@@ -19,9 +24,12 @@ if __name__ == "__main__":
 
     print(isnads_names[0])
 
-    graph = nx.DiGraph()
-    for isnad_name_i, isand_names in enumerate(isnads_names):
-        graph.add_edge(isnad_name_i, isnad_name_i + 1)
+    #graph = nx.DiGraph()
+    #for isnad_name_i, isand_names in enumerate(isnads_names):
+    #    graph.add_edge(isnad_name_i, isnad_name_i + 1)
+
+    #nx.draw(graph)
+    #plt.show()
 
     exit(0)
 
