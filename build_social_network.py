@@ -1,5 +1,6 @@
 import csv
 import json
+import numpy
 import matplotlib.pyplot as plt
 
 import networkx as nx
@@ -7,65 +8,75 @@ import networkx as nx
 GOLD_JSON_PATH = "communities/goldStandard_goldTags.json"
 NAMES_CSV_PATH = "nameData/names.csv"
 
-if __name__ == "__main__":
-    isnad_lengths = []
-        
-    statuses = []
 
-    isnads_names = []
+def read_isnad_lengths():
+    isnad_lengths = []
 
     with open(NAMES_CSV_PATH) as names_csv_file:
         reader = csv.reader(names_csv_file)
-        for row_i, row in enumerate(reader):
-            if row_i == 0: continue
+        _ = next(reader)
+        return [
+            int(float(row[2]))
+            for row in reader
+        ]
 
-            names = [value for value in row[4:] if value != ""]
-            isnads_names.append(names)
-
-    print(isnads_names[0])
-
-    #graph = nx.DiGraph()
-    #for isnad_name_i, isand_names in enumerate(isnads_names):
-    #    graph.add_edge(isnad_name_i, isnad_name_i + 1)
-
-    #nx.draw(graph)
-    #plt.show()
-
-    exit(0)
+    return isnad_lengths
 
 
+def read_isnad_labels():
     gold_entities = [json.loads(l) for l in open(GOLD_JSON_PATH, "r")]
 
-    isnad_entities = {}
+    isnad_labels = {}
     for entity in gold_entities:
         _, _, isnad_id, isnad_name_number = entity["mentionID"].split("_")
         isnad_id = int(isnad_id)
         isnad_name_number = int(isnad_name_number)
 
-        if isnad_id not in isnad_entities:
-            isnad_entities[isnad_id] = {}
+        if isnad_id not in isnad_labels:
+            isnad_labels[isnad_id] = {}
 
-        isnad_entities[isnad_id][isnad_name_number] = entity["community"]
+        isnad_labels[isnad_id][isnad_name_number] = entity["community"]
 
-    print(isnad_entities[0])
+    return isnad_labels
 
-    for isnad_id, isnad in isnad_entities.items():
-        index_communities = [[index, community] for index, community in isnad.items()]
 
-        index_communities_sorted = sorted(index_communities, key=lambda x: x[0])
-        communities_sorted = [community for index, community in index_communities_sorted]
+def create_isnad_data(isnad_lengths, isnad_labels):
+    return [
+        [
+            isnad_labels[isnad_index][node_index]
+            if isnad_index in isnad_labels and node_index in isnad_labels[isnad_index]
+            else None
+            for node_index in range(isnad_length)
+        ]
+        for isnad_index, isnad_length in enumerate(isnad_lengths)
+    ]
 
-        isnad_entities[isnad_id] = communities_sorted
+    def create_graph(isnad_data):
+        isnad_data_flatten = sum(isnad_data, [])
+        isnad_data_flatten_no_nones = [value for value in isnad_data_flatten if value is not None]
+        largest_node_id = numpy.max(isnad_data_flatten_no_nones)
 
-    print(isnad_entities[0])
+        node_id_counter = largest_node_id + 1
+        for isnad_index, isnad_nodes in enumerate(isnad_data):
+            for isnad_node_index, isnad_node in enumerate(isnad_nodes):
+                if isnad_node is None:
+                    isnad_data[isnad_index][isnad_node_index] = node_id_counter
+                    node_id_counter += 1
 
-    graph = nx.DiGraph()
-    for isnad in isnad_entities.values():
-        for index, community in enumerate(isnad[:-1]):
-            next_community = isnad[index + 1]
-            graph.add_edge(community, next_community)
+        graph = nx.DiGraph()
+        for isnad_nodes in isnad_data:
+            for node_index, community in enumerate(isnad_nodes[:-1]):
+                next_community = isnad_nodes[node_index + 1]
+                graph.add_edge(community, next_community)
 
-    print(len(graph.nodes))
+        return graph
 
-    nx.draw(graph)
-    plt.show()
+if __name__ == "__main__":
+    isnad_lengths = read_isnad_lengths()
+    isnad_labels = read_isnad_labels()
+    isnad_data = create_isnad_data(isnad_lengths, isnad_labels)
+
+    graph = create_graph(isnad_data)
+
+    #nx.draw(graph)
+    #plt.show()

@@ -1,9 +1,11 @@
-def hash_vertex(alpha = 0.1):
+import networkx as nx
+
+def hash_vertex(graph, alpha = 0.1):
 
     hash = get_social_hash() + alpha * get_nlp_embeddings():
 
 def get_social_hash():
-
+    
 
 def load_nlp_embeddings():
     pass
@@ -11,4 +13,5 @@ def load_nlp_embeddings():
 def score_all_vertices():
     pass
 
-def merge_vertices(vertices, )
+def merge_vertices(vertices, ):
+    pass
