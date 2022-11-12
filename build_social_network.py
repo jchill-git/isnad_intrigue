@@ -42,7 +42,7 @@ def read_isnad_labels():
 
 def create_isnad_data(isnad_lengths, isnad_labels, max_isnads=None):
     max_isnads = max_isnads or len(isnad_lengths)
-    return [
+    mentions_data = [
         [
             isnad_labels[isnad_index][node_index]
             if isnad_index in isnad_labels and node_index in isnad_labels[isnad_index]
@@ -52,39 +52,53 @@ def create_isnad_data(isnad_lengths, isnad_labels, max_isnads=None):
         for isnad_index, isnad_length in enumerate(isnad_lengths)
     ][:max_isnads]
 
-
-def create_graph(isnad_data):
-    isnad_data_flatten = sum(isnad_data, [])
-    isnad_data_flatten_no_nones = [value for value in isnad_data_flatten if value is not None]
-    largest_labeled_node_id = numpy.max(isnad_data_flatten_no_nones)
+    mentions_data_flatten = sum(mentions_data, [])
+    mentions_data_flatten_no_nones = [value for value in mentions_data_flatten if value is not None]
+    largest_labeled_node_id = numpy.max(mentions_data_flatten_no_nones)
 
     node_id_counter = largest_labeled_node_id + 1
-    for isnad_index, isnad_nodes in enumerate(isnad_data):
+    for isnad_index, isnad_nodes in enumerate(mentions_data):
         for isnad_node_index, isnad_node in enumerate(isnad_nodes):
             if isnad_node is None:
-                isnad_data[isnad_index][isnad_node_index] = node_id_counter
+                mentions_data[isnad_index][isnad_node_index] = node_id_counter
                 node_id_counter += 1
 
+    return {
+        "mentions_data": mentions_data,
+        "largest_labeled_node_id": largest_labeled_node_id,
+    }
+
+
+def create_isnad_graph(isnad_data):
     graph = nx.DiGraph()
-    for isnad_nodes in isnad_data:
-        for node_index, community in enumerate(isnad_nodes[:-1]):
-            next_community = isnad_nodes[node_index + 1]
-            graph.add_edge(community, next_community)
+    for isnad_node_ids in isnad_data["mentions_data"]:
+        for node_index, node_id in enumerate(isnad_node_ids[:-1]):
+            next_node_id = isnad_node_ids[node_index + 1]
+            graph.add_edge(node_id, next_node_id)
 
     node_color = [
-        "red" if node_id <= largest_labeled_node_id else "blue"
+        "red" if node_id <= isnad_data["largest_labeled_node_id"] else "blue"
         for node_id in graph.nodes
     ]
 
     return graph, node_color
 
+def _add_clique(graph, node_ids):
+    pass
+
+
+def create_cooccurence_graph():
+    pass
+
+
 if __name__ == "__main__":
     isnad_lengths = read_isnad_lengths()
     isnad_labels = read_isnad_labels()
-    isnad_data = create_isnad_data(isnad_lengths, isnad_labels, max_isnads=100)
+    isnad_data = create_isnad_data(isnad_lengths, isnad_labels, max_isnads=3)
+    print(isnad_data)
 
-    graph, node_color = create_graph(isnad_data)
-
+    graph, node_color = create_isnad_graph(isnad_data)
+    #graph, node_color = create_cooccurence_graph(isnad_data)
     print(graph)
 
     nx.draw(graph, node_color=node_color)
