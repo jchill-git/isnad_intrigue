@@ -99,14 +99,14 @@ def create_cooccurence_graph(isnad_data):
         for node_index, node_id in enumerate(isnad_node_ids[:-1]):
 
             #for every subsequent node in the isnad
-            for next_node_index, next_node_id in enumerate(isnad_node_ids[node_index:-1]):
+            for next_node_index, next_node_id in enumerate(isnad_node_ids[node_index+1:-1]):
 
                 #if edge exists increment  weight
                 if graph.has_edge(node_id, next_node_id):
                     graph[node_id][next_node_id]['weight'] += 1
 
                 #else add new edge
-                graph.add_edge(node_id, next_node_id,weight=1)
+                graph.add_edge(node_id, next_node_id, weight=1)
 
     #set node color
     node_color = [
