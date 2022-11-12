@@ -83,48 +83,40 @@ def create_isnad_graph(isnad_data):
 
     return graph, node_color
 
-def _add_clique(graph, node_ids):
-    pass
+
+def _add_clique(graph, isnad_node_ids):
+    for node_index, node_id in enumerate(isnad_node_ids[:-1]):
+        for next_node_id in isnad_node_ids[node_index + 1:]:
+
+            #if edge exists increment  weight
+            if graph.has_edge(node_id, next_node_id):
+                graph[node_id][next_node_id]["weight"] += 1
+
+            #else add new edge
+            else:
+                graph.add_edge(node_id, next_node_id, weight=1)
 
 
 def create_cooccurence_graph(isnad_data):
-    graph=nx.Graph()
+    graph = nx.Graph()
 
-    #create an edge between every node in an isnad
+    for isnad_node_ids in isnad_data["mentions_data"]:
+        _add_clique(graph, isnad_node_ids)
 
-    #for each isnad
-    for isnad_node_ids in isnad_data['mentions_data']:
-
-        #for each node in the isnad
-        for node_index, node_id in enumerate(isnad_node_ids[:-1]):
-
-            #for every subsequent node in the isnad
-            for next_node_index, next_node_id in enumerate(isnad_node_ids[node_index:-1]):
-
-                #if edge exists increment  weight
-                if graph.has_edge(node_id, next_node_id):
-                    graph[node_id][next_node_id]['weight'] += 1
-
-                #else add new edge
-                graph.add_edge(node_id, next_node_id,weight=1)
-
-    #set node color
     node_color = [
         "red" if node_id <= isnad_data["largest_labeled_node_id"] else "blue"
         for node_id in graph.nodes
     ]
 
-    #return graph
     return graph, node_color
 
 
 if __name__ == "__main__":
     isnad_lengths = read_isnad_lengths()
     isnad_labels = read_isnad_labels()
-    isnad_data = create_isnad_data(isnad_lengths, isnad_labels, max_isnads=3)
+    isnad_data = create_isnad_data(isnad_lengths, isnad_labels, max_isnads=100)
     print(isnad_data)
 
-    #graph, node_color = create_isnad_graph(isnad_data)
     graph, node_color = create_cooccurence_graph(isnad_data)
     print(graph)
 
