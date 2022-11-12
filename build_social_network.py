@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import networkx as nx
 
 GOLD_JSON_PATH = "communities/goldStandard_goldTags.json"
-NAMES_CSV_PATH = "nameData/names.csv"
+NAMES_CSV_PATH = "nameData/names_disambiguated.csv"
 
 
 def read_isnad_lengths():
@@ -16,7 +16,7 @@ def read_isnad_lengths():
         reader = csv.reader(names_csv_file)
         _ = next(reader)
         return [
-            int(float(row[2]))
+            numpy.count_nonzero(row) - 1
             for row in reader
         ]
 
@@ -40,7 +40,8 @@ def read_isnad_labels():
     return isnad_labels
 
 
-def create_isnad_data(isnad_lengths, isnad_labels):
+def create_isnad_data(isnad_lengths, isnad_labels, max_isnads=None):
+    max_isnads = max_isnads or len(isnad_lengths)
     return [
         [
             isnad_labels[isnad_index][node_index]
@@ -49,34 +50,42 @@ def create_isnad_data(isnad_lengths, isnad_labels):
             for node_index in range(isnad_length)
         ]
         for isnad_index, isnad_length in enumerate(isnad_lengths)
+    ][:max_isnads]
+
+
+def create_graph(isnad_data):
+    isnad_data_flatten = sum(isnad_data, [])
+    isnad_data_flatten_no_nones = [value for value in isnad_data_flatten if value is not None]
+    largest_labeled_node_id = numpy.max(isnad_data_flatten_no_nones)
+
+    node_id_counter = largest_labeled_node_id + 1
+    for isnad_index, isnad_nodes in enumerate(isnad_data):
+        for isnad_node_index, isnad_node in enumerate(isnad_nodes):
+            if isnad_node is None:
+                isnad_data[isnad_index][isnad_node_index] = node_id_counter
+                node_id_counter += 1
+
+    graph = nx.DiGraph()
+    for isnad_nodes in isnad_data:
+        for node_index, community in enumerate(isnad_nodes[:-1]):
+            next_community = isnad_nodes[node_index + 1]
+            graph.add_edge(community, next_community)
+
+    node_color = [
+        "red" if node_id <= largest_labeled_node_id else "blue"
+        for node_id in graph.nodes
     ]
 
-    def create_graph(isnad_data):
-        isnad_data_flatten = sum(isnad_data, [])
-        isnad_data_flatten_no_nones = [value for value in isnad_data_flatten if value is not None]
-        largest_node_id = numpy.max(isnad_data_flatten_no_nones)
-
-        node_id_counter = largest_node_id + 1
-        for isnad_index, isnad_nodes in enumerate(isnad_data):
-            for isnad_node_index, isnad_node in enumerate(isnad_nodes):
-                if isnad_node is None:
-                    isnad_data[isnad_index][isnad_node_index] = node_id_counter
-                    node_id_counter += 1
-
-        graph = nx.DiGraph()
-        for isnad_nodes in isnad_data:
-            for node_index, community in enumerate(isnad_nodes[:-1]):
-                next_community = isnad_nodes[node_index + 1]
-                graph.add_edge(community, next_community)
-
-        return graph
+    return graph, node_color
 
 if __name__ == "__main__":
     isnad_lengths = read_isnad_lengths()
     isnad_labels = read_isnad_labels()
-    isnad_data = create_isnad_data(isnad_lengths, isnad_labels)
+    isnad_data = create_isnad_data(isnad_lengths, isnad_labels, max_isnads=100)
 
-    graph = create_graph(isnad_data)
+    graph, node_color = create_graph(isnad_data)
 
-    #nx.draw(graph)
-    #plt.show()
+    print(graph)
+
+    nx.draw(graph, node_color=node_color)
+    plt.show()
