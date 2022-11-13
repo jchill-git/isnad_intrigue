@@ -83,22 +83,44 @@ def create_isnad_graph(isnad_data):
 
     return graph, node_color
 
+def calc_rel_pos(new_pos, avg_pos, co_oc):
+    avg_pos=(avg_pos*(co_oc-1)+new_pos)/co_oc
+    return avg_pos
+
 
 def _add_clique(graph, isnad_node_ids):
     for node_index, node_id in enumerate(isnad_node_ids[:-1]):
+        #position counter
+        pos=0
         for next_node_id in isnad_node_ids[node_index + 1:]:
+            pos=pos+1
 
-            #if edge exists increment  weight
+            #if positive edge exists, increment co-occurance and recalculate relative position
             if graph.has_edge(node_id, next_node_id):
-                graph[node_id][next_node_id]["weight"] += 1
+                graph[node_id][next_node_id]["cooc"] += 1
+                pos_update=calc_rel_pos(pos,graph[node_id][next_node_id]["rel_pos"],graph[node_id][next_node_id]["cooc"])
+                graph[node_id][next_node_id]["rel_pos"]=pos_update
+
+            #if negative edge exists increment co-occurance and recalculate relative position
+            elif graph.has_edge(next_node_id, node_id):
+                graph[next_node_id][node_id]["cooc"] += 1
+                pos_update=calc_rel_pos(-pos,graph[next_node_id][node_id]["rel_pos"],graph[next_node_id][node_id]["cooc"])
+
+                #if new average position is negative flip edge
+                if pos_update<0:
+                    co_ocs=graph[next_node_id][node_id]["cooc"]
+                    graph.remove_edge(next_node_id, node_id)
+                    graph.add_edge(node_id,next_node_id, cooc=co_ocs, rel_pos=abs(pos_update))
+
+                else:
+                    graph[node_id][next_node_id]["rel_pos"]=pos_update
 
             #else add new edge
             else:
-                graph.add_edge(node_id, next_node_id, weight=1)
-
+                graph.add_edge(node_id, next_node_id, cooc=1, rel_pos=pos)
 
 def create_cooccurence_graph(isnad_data):
-    graph = nx.Graph()
+    graph = nx.DiGraph()
 
     for isnad_node_ids in isnad_data["mentions_data"]:
         _add_clique(graph, isnad_node_ids)
