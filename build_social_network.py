@@ -113,7 +113,7 @@ def _add_clique(graph, isnad_node_ids):
                     graph.add_edge(node_id,next_node_id, cooc=co_ocs, rel_pos=abs(pos_update))
 
                 else:
-                    graph[node_id][next_node_id]["rel_pos"]=pos_update
+                    graph[next_node_id][node_id]["rel_pos"]=pos_update
 
             #else add new edge
             else:
