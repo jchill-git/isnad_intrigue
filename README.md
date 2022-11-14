@@ -1,5 +1,5 @@
 # isnadNameDisambiguation
-Code and data for "From Networks to Named Entities and Back Again: Exploring Classical Arabic Isnad Networks"
+Code and data adapted from Ryan Muther's "From Networks to Named Entities and Back Again: Exploring Classical Arabic Isnad Networks"
 
 The disambiguated names and their embeddings can be found in the nameData folder.
 
