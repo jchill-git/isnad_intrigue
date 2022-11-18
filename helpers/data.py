@@ -1,8 +1,11 @@
+from typing import List, Tuple
+
+import copy
 import csv
 import json
 import numpy as np
 
-from helpers.utils import max_list_of_lists
+from helpers.utils import max_list_of_lists, match_list_shape
 
 
 def read_isnad_data(
@@ -42,6 +45,46 @@ def read_isnad_data(
     ]
 
     return isnad_mention_ids, disambiguated_ids
+
+
+def create_test_split(
+    isnad_mention_ids: List[List[int]],
+    disambiguated_ids: List[int],
+    test_size: float
+) -> Tuple[List[List[int]], List[int]]:
+    """
+    Creates a test set of mention ids by sequentally
+    ambiguating previous disambiguous mentions
+    """
+    isnad_mentions_ids_copy = copy.deepcopy(isnad_mention_ids)
+
+    mention_ids_flattened = sum(isnad_mentions_ids_copy, [])
+    disambiguated_indices = [
+        mention_index
+        for mention_index, mention_id in enumerate(mention_ids_flattened)
+        if mention_id in disambiguated_ids
+    ]
+
+    # choose indices to ambiguate
+    num_indices_to_ambiguate = int(test_size * len(disambiguated_indices))
+    indices_to_ambiguate = np.random.choice(
+        disambiguated_indices,
+        num_indices_to_ambiguate,
+        replace=False
+    )
+
+    largest_mention_id = max(mention_ids_flattened)
+    for index_to_ambiguate in indices_to_ambiguate:
+
+        # ambiguate the mention at that index
+        mention_ids_flattened[index_to_ambiguate] = largest_mention_id + 1
+        largest_mention_id += 1
+
+    # reshape back to isnad_mention_ids shape
+    test_isnad_mention_ids = match_list_shape(mention_ids_flattened, isnad_mention_ids)
+
+    # note disambiguated_ids is unchanged
+    return test_isnad_mention_ids, disambiguated_ids
 
 def _read_isnad_lengths(file_path: str):
     isnad_lengths = []

@@ -9,7 +9,7 @@ def create_cooccurence_graph(
     max_isnads: Optional[int] = None,
 ):
     # truncate to max_isnads
-    max_isnads = max_isnads or len(isnad_lengths)
+    max_isnads = max_isnads or len(isnad_mention_ids)
     isnad_mention_ids = isnad_mention_ids[:max_isnads]
 
     # create graph
