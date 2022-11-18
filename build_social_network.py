@@ -7,6 +7,7 @@ import networkx as nx
 
 GOLD_JSON_PATH = "communities/goldStandard_goldTags.json"
 NAMES_CSV_PATH = "nameData/names_disambiguated.csv"
+ADD_SELF_EDGES = True
 
 
 def read_isnad_lengths():
@@ -83,41 +84,31 @@ def create_isnad_graph(isnad_data):
 
     return graph, node_color
 
-def calc_rel_pos(new_pos, avg_pos, co_oc):
-    avg_pos=(avg_pos*(co_oc-1)+new_pos)/co_oc
-    return avg_pos
-
 
 def _add_clique(graph, isnad_node_ids):
-    for node_index, node_id in enumerate(isnad_node_ids[:-1]):
-        #position counter
-        pos=0
-        for next_node_id in isnad_node_ids[node_index + 1:]:
-            pos=pos+1
+    for node_index, node_id in enumerate(isnad_node_ids):
+        for relative_position, next_node_id in enumerate(isnad_node_ids[node_index:]):
+            if not ADD_SELF_EDGES and node_id == next_node_id: continue
 
-            #if positive edge exists, increment co-occurance and recalculate relative position
+            # if forward edge exists, increment co-occurance and increase relative position
             if graph.has_edge(node_id, next_node_id):
-                graph[node_id][next_node_id]["cooc"] += 1
-                pos_update=calc_rel_pos(pos,graph[node_id][next_node_id]["rel_pos"],graph[node_id][next_node_id]["cooc"])
-                graph[node_id][next_node_id]["rel_pos"]=pos_update
+                graph[node_id][next_node_id]["num_coocurrences"] += 1
+                graph[node_id][next_node_id]["relative_position_sum"] += relative_position
 
-            #if negative edge exists increment co-occurance and recalculate relative position
+            # if backward edge exists, increment co-occurance and decrease relative position
             elif graph.has_edge(next_node_id, node_id):
-                graph[next_node_id][node_id]["cooc"] += 1
-                pos_update=calc_rel_pos(-pos,graph[next_node_id][node_id]["rel_pos"],graph[next_node_id][node_id]["cooc"])
+                graph[next_node_id][node_id]["num_coocurrences"] += 1
+                graph[next_node_id][node_id]["relative_position_sum"] -= relative_position
 
-                #if new average position is negative flip edge
-                if pos_update<0:
-                    co_ocs=graph[next_node_id][node_id]["cooc"]
-                    graph.remove_edge(next_node_id, node_id)
-                    graph.add_edge(node_id,next_node_id, cooc=co_ocs, rel_pos=abs(pos_update))
-
-                else:
-                    graph[next_node_id][node_id]["rel_pos"]=pos_update
-
-            #else add new edge
+            # else add new forward edge
             else:
-                graph.add_edge(node_id, next_node_id, cooc=1, rel_pos=pos)
+                graph.add_edge(
+                    node_id,
+                    next_node_id,
+                    num_coocurrences=1,
+                    relative_position_sum=relative_position
+                )
+
 
 def create_cooccurence_graph(isnad_data):
     graph = nx.DiGraph()
@@ -132,6 +123,31 @@ def create_cooccurence_graph(isnad_data):
 
     return graph, node_color
 
+def show_graph(graph, node_color):
+    positions = nx.spring_layout(graph)
+
+    nx.draw(
+        graph,
+        pos=positions,
+        node_color=node_color
+    )
+
+    position_sum_labels = nx.get_edge_attributes(graph, "relative_position_sum")
+    num_coocurrences_labels = nx.get_edge_attributes(graph, "num_coocurrences")
+
+    relative_position_labels = {
+        key: position_sum_labels[key] / num_coocurrences_labels[key]
+        for key in position_sum_labels.keys()
+    }
+
+    nx.draw_networkx_edge_labels(
+        graph,
+        pos=positions,
+        edge_labels=relative_position_labels,
+        font_size=3,
+    )
+
+    plt.show()
 
 if __name__ == "__main__":
     isnad_lengths = read_isnad_lengths()
@@ -142,5 +158,4 @@ if __name__ == "__main__":
     graph, node_color = create_cooccurence_graph(isnad_data)
     print(graph)
 
-    nx.draw(graph, node_color=node_color)
-    plt.show()
+    show_graph(graph, node_color)
