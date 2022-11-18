@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, List
 
 import csv
 import json
@@ -39,13 +39,22 @@ def read_isnad_labels(file_path: str):
     return isnad_labels
 
 
-def create_isnad_data(
-    isnad_lengths,
-    isnad_labels,
-    max_isnads: Optional[int] = None
+def _max_list_of_lists(list_of_lists):
+    flattened = sum(list_of_lists, [])
+    flattened_without_nones = [value for value in flattened if value is not None]
+    return max(flattened_without_nones)
+
+
+def read_isnad_data(
+    isnad_names_path: str,
+    isnad_labels_path: str,
 ):
-    max_isnads = max_isnads or len(isnad_lengths)
-    mentions_data = [
+    # read raw isnad data
+    isnad_lengths = read_isnad_lengths(isnad_names_path)
+    isnad_labels = read_isnad_labels(isnad_labels_path)
+
+    # build mention_labels from raw data
+    isnad_mention_ids = [
         [
             isnad_labels[isnad_index][node_index]
             if isnad_index in isnad_labels and node_index in isnad_labels[isnad_index]
@@ -53,30 +62,33 @@ def create_isnad_data(
             for node_index in range(isnad_length)
         ]
         for isnad_index, isnad_length in enumerate(isnad_lengths)
-    ][:max_isnads]
-
-    mentions_data_flatten = sum(mentions_data, [])
-    mentions_data_flatten_no_nones = [
-        value
-        for value in mentions_data_flatten
-        if value is not None
     ]
-    largest_labeled_node_id = numpy.max(mentions_data_flatten_no_nones)
 
+    # iterate through mentions and replace nones with incrementing ids
+    largest_labeled_node_id = _max_list_of_lists(isnad_mention_ids)
     node_id_counter = largest_labeled_node_id + 1
-    for isnad_index, isnad_nodes in enumerate(mentions_data):
+    for isnad_index, isnad_nodes in enumerate(isnad_mention_ids):
         for isnad_node_index, isnad_node in enumerate(isnad_nodes):
             if isnad_node is None:
-                mentions_data[isnad_index][isnad_node_index] = node_id_counter
+                isnad_mention_ids[isnad_index][isnad_node_index] = node_id_counter
                 node_id_counter += 1
 
-    return {
-        "mentions_data": mentions_data,
-        "largest_labeled_node_id": largest_labeled_node_id,
-    }
+    # create list of ids that are disambiguated
+    max_id_value = _max_list_of_lists(isnad_mention_ids)
+    disambiguated_ids = [
+        id
+        for id in range(max_id_value + 1)
+        if id <= largest_labeled_node_id
+    ]
+
+    return isnad_mention_ids, disambiguated_ids
 
 
 def create_isnad_graph(isnad_data):
+    """
+    Only used for demonstration purposes
+    """
+
     graph = nx.DiGraph()
     for isnad_node_ids in isnad_data["mentions_data"]:
         for node_index, node_id in enumerate(isnad_node_ids[:-1]):
@@ -123,30 +135,31 @@ def _add_clique(graph, isnad_node_ids, self_edges=False):
 
 
 def create_cooccurence_graph(
-    isnad_names_path: str,
-    isnad_labels_path: str,
+    isnad_mention_ids: List[List[int]],
     self_edges: bool = False,
     max_isnads: Optional[int] = None,
 ):
-    isnad_lengths = read_isnad_lengths(isnad_names_path)
-    isnad_labels = read_isnad_labels(isnad_labels_path)
-    isnad_data = create_isnad_data(isnad_lengths, isnad_labels, max_isnads=max_isnads)
+    # truncate to max_isnads
+    max_isnads = max_isnads or len(isnad_lengths)
+    isnad_mention_ids = isnad_mention_ids[:max_isnads]
 
+    # create graph
     graph = nx.DiGraph()
 
-    for isnad_node_ids in isnad_data["mentions_data"]:
-        _add_clique(graph, isnad_node_ids, self_edges=self_edges)
+    # add cliques
+    for mention_ids in isnad_mention_ids:
+        _add_clique(graph, mention_ids, self_edges=self_edges)
+
+    return graph
+
+
+def show_graph(graph: nx.Graph, disambiguated_ids: List[int]):
+    positions = nx.spring_layout(graph)
 
     node_color = [
-        "red" if node_id <= isnad_data["largest_labeled_node_id"] else "blue"
+        "red" if node_id in disambiguated_ids else "blue"
         for node_id in graph.nodes
     ]
-
-    return graph, node_color
-
-
-def show_graph(graph, node_color = None):
-    positions = nx.spring_layout(graph)
 
     nx.draw(
         graph,
@@ -175,11 +188,15 @@ def show_graph(graph, node_color = None):
     plt.show()
 
 if __name__ == "__main__":
-    graph, node_color = create_cooccurence_graph(
+    isnad_mention_ids, disambiguated_ids = read_isnad_data(
         "nameData/names_disambiguated.csv",
         "communities/goldStandard_goldTags.json",
-        self_edges=False,
-        max_isnads=3,
     )
 
-    show_graph(graph, node_color)
+    graph = create_cooccurence_graph(
+        isnad_mention_ids,
+        self_edges=False,
+        max_isnads=1,
+    )
+
+    show_graph(graph, disambiguated_ids)
