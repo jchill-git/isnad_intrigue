@@ -1,6 +1,5 @@
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 
-import copy
 import csv
 import json
 import numpy as np
@@ -17,7 +16,7 @@ def read_isnad_data(
     # read raw isnad data
     isnad_lengths = _read_isnad_lengths(isnad_names_path)
     isnad_labels = _read_isnad_labels(isnad_labels_path)
-    isnad_embeddings = _read_isnad_embeddings(isnad_embeddings_path)
+    #isnad_embeddings = _read_isnad_embeddings(isnad_embeddings_path)
 
     # build mention_labels from raw data
     isnad_mention_ids = [
@@ -50,32 +49,42 @@ def read_isnad_data(
     return isnad_mention_ids, disambiguated_ids
 
 
-def create_test_split(
+def split_data(
     isnad_mention_ids: List[List[int]],
     disambiguated_ids: List[int],
-    test_size: float
+    test_mentions: Optional[List[List[bool]]] = None,
+    test_size: Optional[float] = None
 ) -> Tuple[List[List[int]], List[int]]:
     """
     Creates a test set of mention ids by sequentally
     ambiguating previous disambiguous mentions
     """
-    isnad_mentions_ids_copy = copy.deepcopy(isnad_mention_ids)
+    if test_mentions is None == test_size is None:
+        raise ValueError(
+            "Must include either a boolean list of lists denoting which mentions "
+            "to use as test or test_size"
+        )
 
+    # randomly split if test_mentions is not given
+    if test_mentions is None:
+        test_mentions = random_split_test_mentions(
+            isnad_mention_ids,
+            disambiguated_ids,
+            test_size=test_size
+        )
+
+    # flatten and prepare inputs
+    isnad_mentions_ids_copy = isnad_mention_ids.copy()
     mention_ids_flattened = sum(isnad_mentions_ids_copy, [])
-    disambiguated_indices = [
-        mention_index
-        for mention_index, mention_id in enumerate(mention_ids_flattened)
-        if mention_id in disambiguated_ids
+    test_mentions_flattened = sum(test_mentions, [])
+    indices_to_ambiguate = [
+        index
+        for index, is_test in enumerate(test_mentions_flattened)
+        if is_test
     ]
+    assert len(mention_ids_flattened) == len(test_mentions_flattened)
 
-    # choose indices to ambiguate
-    num_indices_to_ambiguate = int(test_size * len(disambiguated_indices))
-    indices_to_ambiguate = np.random.choice(
-        disambiguated_indices,
-        num_indices_to_ambiguate,
-        replace=False
-    )
-
+    # ambiguate mentions
     largest_mention_id = max(mention_ids_flattened)
     for index_to_ambiguate in indices_to_ambiguate:
 
@@ -88,6 +97,36 @@ def create_test_split(
 
     # note disambiguated_ids is unchanged
     return test_isnad_mention_ids, disambiguated_ids
+
+
+def random_split_test_mentions(
+    isnad_mention_ids: List[List[int]],
+    disambiguated_ids: List[int],
+    test_size: float
+):
+    isnad_mentions_ids_copy = isnad_mention_ids.copy()
+    mention_ids_flattened = sum(isnad_mentions_ids_copy, [])
+    disambiguated_indices = [
+        mention_index
+        for mention_index, mention_id in enumerate(mention_ids_flattened)
+        if mention_id in disambiguated_ids
+    ]
+
+    num_indices_to_ambiguate = int(test_size * len(disambiguated_indices))
+    indices_to_ambiguate = np.random.choice(
+        disambiguated_indices,
+        num_indices_to_ambiguate,
+        replace=False
+    )
+
+    test_mentions_flattened = [False for _ in mention_ids_flattened]
+    for index in indices_to_ambiguate:
+        test_mentions_flattened[index] = True
+
+    test_mentions = match_list_shape(test_mentions_flattened, isnad_mention_ids)
+
+    return test_mentions
+
 
 def _read_isnad_lengths(file_path: str):
     isnad_lengths = []
