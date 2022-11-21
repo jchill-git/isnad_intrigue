@@ -11,12 +11,15 @@ from helpers.utils import max_list_of_lists, match_list_shape
 def read_isnad_data(
     isnad_names_path: str,
     isnad_labels_path: str,
-    isnad_embeddings_path: str,
+    isnad_embeddings_path: Optional[str] = None,
 ):
     # read raw isnad data
     isnad_lengths = _read_isnad_lengths(isnad_names_path)
     isnad_labels = _read_isnad_labels(isnad_labels_path)
-    #isnad_embeddings = _read_isnad_embeddings(isnad_embeddings_path)
+    if isnad_embeddings_path is not None:
+        isnad_embeddings = _read_isnad_embeddings(isnad_embeddings_path)
+    else:
+        isnad_embeddings = None
 
     # build mention_labels from raw data
     isnad_mention_ids = [
@@ -46,7 +49,7 @@ def read_isnad_data(
         if id <= largest_labeled_node_id
     ]
 
-    return isnad_mention_ids, disambiguated_ids
+    return isnad_mention_ids, disambiguated_ids, isnad_embeddings
 
 
 def split_data(
@@ -128,18 +131,28 @@ def random_split_test_mentions(
     return test_mentions
 
 
-def _read_isnad_lengths(file_path: str):
-    isnad_lengths = []
+def read_isnad_names(isnad_names_path: str):
+    isnad_names = []
 
+    with open(isnad_names_path) as names_csv_file:
+        reader = csv.reader(names_csv_file)
+        _ = next(reader)
+
+        for row in reader:
+            names = [name for name in row[4:] if name != ""]
+            isnad_names.append(names)
+
+    return isnad_names
+
+
+def _read_isnad_lengths(file_path: str):
     with open(file_path) as names_csv_file:
         reader = csv.reader(names_csv_file)
         _ = next(reader)
         return [
-            np.count_nonzero(row) - 1
+            np.count_nonzero(row[4:])
             for row in reader
         ]
-
-    return isnad_lengths
 
 
 def _read_isnad_labels(file_path: str):
