@@ -138,7 +138,6 @@ for index in tqdm(range(len(data))):
     for entry in embeddedNames:
         outfile.write(json.dumps(entry,ensure_ascii=False)+"\n")
 
-    break
 
 outfile.close()
 print("Wrote %d documents worth of output rows to %s"%(len(data),outfilePath))
