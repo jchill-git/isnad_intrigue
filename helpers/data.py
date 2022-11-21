@@ -15,10 +15,9 @@ def read_isnad_data(
     isnad_embeddings_path: str,
 ):
     # read raw isnad data
-    #isnad_lengths = _read_isnad_lengths(isnad_names_path)
-    #isnad_labels = _read_isnad_labels(isnad_labels_path)
+    isnad_lengths = _read_isnad_lengths(isnad_names_path)
+    isnad_labels = _read_isnad_labels(isnad_labels_path)
     isnad_embeddings = _read_isnad_embeddings(isnad_embeddings_path)
-    print(len(isnad_embeddings[0])); exit(0)
 
     # build mention_labels from raw data
     isnad_mention_ids = [
@@ -126,7 +125,6 @@ def _read_isnad_embeddings(file_path: str):
         mention_embeddings = [json.loads(line) for line in embeddings_file]
 
     isnad_mention_embeddings = []
-
     for mention_embedding in mention_embeddings:
         isnad_index, mention_index = parse("JK_000916_{}_{}", mention_embedding["id"])
         isnad_index = int(isnad_index)

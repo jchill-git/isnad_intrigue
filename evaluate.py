@@ -7,6 +7,7 @@ if __name__ == "__main__":
     true_isnad_mention_ids, true_disambiguated_ids = read_isnad_data(
         "nameData/names_disambiguated.csv",
         "communities/goldStandard_goldTags.json",
+        "nameData/namesWithEmbeddings_NER_strict.json"
     )
 
     # truncate for testing

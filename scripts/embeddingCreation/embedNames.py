@@ -88,10 +88,10 @@ def processDocument(instance):
         tokenIndices = [i for i,tokIdx in enumerate(tokenMap) if (tokIdx >= nameStart and tokIdx <= nameEnd) and i > 0 and i < len(tokenMap)-1]
 
         #then get the embeddings at those indices
-        print(tokenIndices)
+        #print(tokenIndices)
         nameEmbeddings = embeddings[min(tokenIndices):max(tokenIndices)+1]
-        print(nameEmbeddings)
-        exit(0)
+        #print(nameEmbeddings)
+        #exit(0)
 
         #average the embeddings for all the subwords in the name to get
         # the name's embedding
@@ -137,6 +137,8 @@ for index in tqdm(range(len(data))):
     #write output to file
     for entry in embeddedNames:
         outfile.write(json.dumps(entry,ensure_ascii=False)+"\n")
+
+    break
 
 outfile.close()
 print("Wrote %d documents worth of output rows to %s"%(len(data),outfilePath))

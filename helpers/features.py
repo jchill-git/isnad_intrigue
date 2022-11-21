@@ -47,22 +47,11 @@ def hash_node(graph, node, cooc_alpha=1.0, position_alpha=1.0, nlp_alpha=0.1):
     return hash
 
 
-def load_nlp_embeddings():
-    pass
-
-
-def score_all_vertices():
-    pass
-
-
-def merge_vertices(vertices, ):
-    pass
-
-
 if __name__ == "__main__":
     graph, node_color = create_cooccurence_graph(
         "nameData/names_disambiguated.csv",
         "communities/goldStandard_goldTags.json",
+        "nameData/namesWithEmbeddings_NER_strict.json",
         self_edges=True,
         max_isnads=1,
     )
