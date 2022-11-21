@@ -31,9 +31,6 @@ class NamesDataset(Dataset):
 
         return name, label
 
-class ContrastiveLoss(nn.Module):
-    def __init__(self):
-        self.similarity = torch.nn.CosineSimilarity(dim=2)
 
 if __name__ == "__main__":
     wandb.init(
@@ -52,25 +49,57 @@ if __name__ == "__main__":
         "communities/goldStandard_goldTags.json"
     )
 
-    dataloader = DataLoader(
+    query_dataloader = DataLoader(
+        names_dataset,
+        batch_size=1,
+        shuffle=True,
+        num_workers=0,
+    )
+
+    key_dataloader = DataLoader(
         names_dataset,
         batch_size=wandb.config["batch_size"],
         shuffle=True,
         num_workers=0,
     )
 
-    """
     # set up model and loss
-    tokenizer = BertTokenizerFast.from_pretrained("lanwuwei/GigaBERT-v3-Arabic-and-English", do_lower_case=True)
+    tokenizer = BertTokenizerFast.from_pretrained(
+        "lanwuwei/GigaBERT-v3-Arabic-and-English",
+        do_lower_case=True,
+        to=DEVICE,
+    )
     model = BertModel.from_pretrained("lanwuwei/GigaBERT-v3-Arabic-and-English").to(DEVICE)
-    criterion = torch.nn.CrossEntropyLoss().to(DEVICE)
+    criterion = torch.nn.TripletMarginLoss(margin=1)
 
-    for epoch in wandb.config["num_epochs"]:
-        for names, labels in dataloader:
-            names = names.to(DEVICE)
-            labels = labels.to(DEVICE)
+    for epoch in range(wandb.config["num_epochs"]):
+        for (query_name, query_label), (key_names, key_labels) in zip(query_dataloader, key_dataloader):
 
-            tokens = tokenizer(names)
-            outputs = model(**tokens)
-            cls_output = outputs[0]
-    """
+            # collate
+            query_name = query_name[0]
+            key_names = list(key_names)
+
+            print(query_name)
+            print(query_label)
+            print(key_names)
+            print(key_labels)
+
+            query_tokens = tokenizer(query_name, return_tensors="pt")
+            print(query_tokens)
+            query_output = model(**query_tokens)[0]
+            query_output = query_output[0] # take cls token
+            print(query_output)
+
+            key_tokens = tokenizer(key_names, return_tensors="pt")
+            print(key_tokens)
+            key_outputs = model(**key_tokens)[0]
+            key_outputs = key_outputs[0] # take cls token
+            print(key_outputs)
+
+            positive_outputs = key_outputs[query_label == key_labels]
+            negative_outputs = key_outputs[query_label != key_labels]
+
+            loss = criterion(query_output, positive_outputs, negative_outputs)
+
+            break
+        break
