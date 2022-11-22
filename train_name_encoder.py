@@ -118,7 +118,7 @@ if __name__ == "__main__":
             "pooling_method": "cls",
             "cosine_margin": 0.0,
             "batch_logging_rate": 7,
-            "save_path": "checkpoints/nem_{epoch:.3f}_{loss:.3f}.pth"
+            "save_path": "checkpoints/nem_{epoch_num:.3f}_{loss:.3f}.pth"
         },
         mode="online"
     )
@@ -243,5 +243,5 @@ if __name__ == "__main__":
                 )
 
         average_loss = sum(train_losses) / len(train_losses)
-        save_path = wandb.config["save_path"].format(epoch=epoch, loss=average_loss)
+        save_path = wandb.config["save_path"].format(epoch_num=epoch_num, loss=average_loss)
         torch.save(model.state_dict(), save_path)
