@@ -42,13 +42,14 @@ if __name__ == "__main__":
             "num_epochs": 3,
             "batch_size": 32,
             "max_length": 32,
-            "learning_rate": 0.01,
-            "momentum": 0.9,
-            "temperature": 1.0,
+            "learning_rate": 5e-7,
+            "pooling_method": "cls",
+            "cosine_margin": 0.0,
             "save_path": "name_embedding_model_{epoch}_{loss}.pth"
         },
         mode="disabled"
     )
+    assert wandb.config["pooling_method"] in ["cls", "mean"]
 
     # create dataset and data loaders
     names_dataset = NamesDataset(
@@ -85,17 +86,15 @@ if __name__ == "__main__":
         to=DEVICE,
     )
     model = BertModel.from_pretrained(wandb.config["pretrained_model"]).to(DEVICE)
-    criterion = torch.nn.CosineEmbeddingLoss().to(DEVICE)
-    optimizer = torch.optim.SGD(
-        model.parameters(),
-        lr=wandb.config["learning_rate"],
-        momentum=wandb.config["momentum"]
-    )
+    criterion = torch.nn.CosineEmbeddingLoss(margin=wandb.config["cosine_margin"]).to(DEVICE)
+    optimizer = torch.optim.Adam(model.parameters(), lr=wandb.config["learning_rate"])
 
-    for epoch in range(wandb.config["num_epochs"]):
+    for epoch_num in range(wandb.config["num_epochs"]):
         losses = []
 
-        for (query_name, query_label), (key_names, key_labels) in zip(query_dataloader, key_dataloader):
+        for batch_num, (query_name, query_label), (key_names, key_labels) in zip(
+            query_dataloader, key_dataloader
+        ):
             # reset gradient
             optimizer.zero_grad()
 
@@ -106,9 +105,8 @@ if __name__ == "__main__":
                 padding="max_length",
                 truncation=True,
                 return_tensors="pt"
-            )
+            ).to(DEVICE)
             query_output = model(**query_tokens).last_hidden_state
-            query_output = query_output[:, 0, :] # take cls token
 
             # embed keys
             key_tokens = tokenizer(
@@ -118,15 +116,22 @@ if __name__ == "__main__":
                 padding="max_length",
                 truncation=True,
                 return_tensors="pt"
-            )
+            ).to(DEVICE)
             key_outputs = model(**key_tokens).last_hidden_state
-            key_outputs = key_outputs[:, 0, :] # take cls token
+
+            # pool outputs
+            if wandb.config["pooling_method"] == "cls":
+                query_output = query_output[:, 0, :]
+                key_outputs = key_outputs[:, 0, :]
+            if wandb.config["pooling_method"] == "mean":
+                query_output = torch.mean(query_output, dim=1)
+                key_outputs = torch.mean(key_outputs, dim=1)
 
             # compute loss and backpropagate
             target = torch.tensor([
                 1 if key_label == query_label else -1
                 for key_label in key_labels
-            ])
+            ], device=DEVICE)
             loss = criterion(query_output, key_outputs, target)
             loss.backward()
             optimizer.step()
@@ -134,8 +139,12 @@ if __name__ == "__main__":
             # log
             losses.append(loss.item())
             wandb.log({"loss": loss.item()})
-            print(f"loss: {loss.item()}")
+            print(
+                f"[{epoch_num}, {batch_num}]: "
+                f"(loss): {loss.item():.3f}"
+                f"(+/- mix): {sum(target)/len(target):.3f}"
+            )
 
-        average_loss = sum(losses) / len(losses)
-        save_path = wandb.config["save_path"].format(epoch=epoch, loss=average_loss)
-        torch.save(model.state_dict(), save_path)
+        #average_loss = sum(losses) / len(losses)
+        #save_path = wandb.config["save_path"].format(epoch=epoch, loss=average_loss)
+        #torch.save(model.state_dict(), save_path)
