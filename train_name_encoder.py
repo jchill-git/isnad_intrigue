@@ -62,7 +62,7 @@ class NamesDataset(Dataset):
         return self.names[index], self.labels[index]
 
 
-def test_model(test_dataloader, tokenizer, model, criterion, max_samples=5):
+def test_model(test_dataloader, tokenizer, model, criterion, max_samples=7):
     model.eval()
 
     # load data
@@ -89,7 +89,7 @@ def test_model(test_dataloader, tokenizer, model, criterion, max_samples=5):
         test_outputs = torch.mean(test_outputs, dim=1)
 
     # calculate loss
-    loss = torch.tensor(0, dtype=torch.float)
+    loss = torch.tensor(0, dtype=torch.float, device=DEVICE)
     for test_key_output, test_key_label in zip(test_outputs, test_labels):
         test_key_output = test_key_output.unsqueeze(0)
         target = get_target(test_key_label, test_labels)
@@ -111,14 +111,14 @@ if __name__ == "__main__":
         entity="kylesayrs",
         config={
             "pretrained_model": "lanwuwei/GigaBERT-v3-Arabic-and-English",
-            "num_epochs": 5,
+            "num_epochs": 20,
             "batch_size": 32,
             "max_length": 32,
-            "learning_rate": 5e-7,
+            "learning_rate": 1e-7,
             "pooling_method": "cls",
             "cosine_margin": 0.0,
-            "batch_logging_rate": 5,
-            "save_path": "nem_{epoch:.3f}_{loss:.3f}.pth"
+            "batch_logging_rate": 7,
+            "save_path": "checkpoints/nem_{epoch:.3f}_{loss:.3f}.pth"
         },
         mode="online"
     )
@@ -242,6 +242,6 @@ if __name__ == "__main__":
                     f"(test_loss): {test_loss:.3f}"
                 )
 
-        #average_loss = sum(losses) / len(losses)
-        #save_path = wandb.config["save_path"].format(epoch=epoch, loss=average_loss)
-        #torch.save(model.state_dict(), save_path)
+        average_loss = sum(losses) / len(losses)
+        save_path = wandb.config["save_path"].format(epoch=epoch, loss=average_loss)
+        torch.save(model.state_dict(), save_path)
