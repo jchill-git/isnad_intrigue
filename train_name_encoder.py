@@ -38,6 +38,7 @@ if __name__ == "__main__":
         project="isnad_contrastive_learning",
         entity="kylesayrs",
         config={
+            "pretrained_model": "lanwuwei/GigaBERT-v3-Arabic-and-English",
             "num_epochs": 3,
             "batch_size": 32,
             "max_length": 32,
@@ -78,12 +79,12 @@ if __name__ == "__main__":
 
     # set up model, optimizer, and loss
     tokenizer = BertTokenizerFast.from_pretrained(
-        "lanwuwei/GigaBERT-v3-Arabic-and-English",
+        wandb.config["pretrained_model"],
         do_lower_case=True,
         to=DEVICE,
     )
-    model = BertModel.from_pretrained("lanwuwei/GigaBERT-v3-Arabic-and-English").to(DEVICE)
-    criterion = torch.nn.CosineEmbeddingLoss()#torch.nn.CrossEntropyLoss()
+    model = BertModel.from_pretrained(wandb.config["pretrained_model"]).to(DEVICE)
+    criterion = torch.nn.CosineEmbeddingLoss().to(DEVICE)
     optimizer = torch.optim.SGD(
         model.parameters(),
         lr=wandb.config["learning_rate"],
@@ -92,7 +93,6 @@ if __name__ == "__main__":
 
     for epoch in range(wandb.config["num_epochs"]):
         for (query_name, query_label), (key_names, key_labels) in zip(query_dataloader, key_dataloader):
-
             # reset gradient
             optimizer.zero_grad()
 
@@ -106,7 +106,6 @@ if __name__ == "__main__":
             )
             query_output = model(**query_tokens).last_hidden_state
             query_output = query_output[:, 0, :] # take cls token
-            #query_output = torch.nn.functional.normalize(query_output, dim=1)
 
             # embed keys
             key_tokens = tokenizer(
@@ -119,52 +118,17 @@ if __name__ == "__main__":
             )
             key_outputs = model(**key_tokens).last_hidden_state
             key_outputs = key_outputs[:, 0, :] # take cls token
-            #key_outputs = torch.nn.functional.normalize(key_outputs, dim=1)
 
-            # separate into positive and negative outputs
-            #positive_labels_mask = [key_label == query_label for key_label in key_labels]
-            #negative_labels_mask = [key_label != query_label for key_label in key_labels]
-            #positive_outputs = key_outputs[positive_labels_mask]
-            #negative_outputs = key_outputs[negative_labels_mask]
-
-            """
-            # compute logits
-            positive_logits = torch.einsum("nc,nc->n", [query_output, positive_outputs])#.unsqueeze(-1)
-            negative_logits = torch.einsum("nc,nc->n", [query_output, negative_outputs])#.unsqueeze(-1)
-            print(positive_logits)
-            print(negative_logits)
-            print(positive_logits.shape)
-            print(negative_logits.shape)
-
-            labels = torch.cat([torch.ones(len(positive_logits)), torch.zeros(len(negative_logits))])
-            logits = torch.cat([positive_logits, negative_logits], dim=0)
-            logits /= wandb.config["temperature"]
-            print(logits)
-            print(logits.shape)
-            print(labels)
-            print(labels.shape)
-
-            # compute loss
-            loss = criterion(labels, logits)
-            loss.backward()
-            optimizer.step()
-            """
-
-            print(query_output.shape)
-            #print(positive_outputs.shape)
-            #print(negative_outputs.shape)
-            print(key_outputs.shape)
+            # compute loss and backpropagate
             target = torch.tensor([
                 1 if key_label == query_label else -1
                 for key_label in key_labels
             ])
-            print(target)
             loss = criterion(query_output, key_outputs, target)
-            print(loss)
-
             loss.backward()
             optimizer.step()
 
+            # log
             wandb.log({
                 "loss": loss.item()
             })
