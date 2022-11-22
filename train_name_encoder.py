@@ -4,8 +4,7 @@ import json
 import wandb
 import torch
 from torch.utils.data import Dataset, DataLoader
-from transformers import BertTokenizerFast, BertModel
-from transformers import logging
+from transformers import BertTokenizerFast, BertModel, logging
 
 from helpers.data import read_isnad_names, read_isnad_data, split_data
 from helpers.utils import invert_list
@@ -29,8 +28,8 @@ class NamesDataset(Dataset):
         )
 
         # split data
-        with open(test_mentions_path, "r") as test_mentions_path:
-            test_mentions = json.load(test_mentions_path)
+        with open(test_mentions_path, "r") as test_mentions_file:
+            test_mentions = json.load(test_mentions_file)
         mentions_split = invert_list(test_mentions) if is_train else test_mentions
         isnad_mention_ids, disambiguated_ids = split_data(
             isnad_mention_ids,
@@ -105,6 +104,12 @@ def get_target(query_label, key_labels):
     ], device=DEVICE)
 
 
+def save_model(model, epoch_num, train_losses, test_losses):
+    average_loss = sum(train_losses) / len(train_losses)
+    save_path = wandb.config["save_path"].format(epoch_num=epoch_num, loss=average_loss)
+    model.save_pretrained(save_path)
+
+
 if __name__ == "__main__":
     wandb.init(
         project="isnad_contrastive_learning",
@@ -115,10 +120,10 @@ if __name__ == "__main__":
             "batch_size": 32,
             "max_length": 32,
             "learning_rate": 1e-6,
-            "pooling_method": "cls",
+            "pooling_method": "mean",
             "cosine_margin": 0.0,
             "batch_logging_rate": 7,
-            "save_path": "checkpoints/nem_{epoch_num:.3f}_{loss:.3f}.pth"
+            "save_path": "checkpoints/encoder_{epoch_num}_{loss:.3f}"
         },
         mode="online"
     )
@@ -238,10 +243,8 @@ if __name__ == "__main__":
                 print(
                     f"[{epoch_num}, {batch_num}]: "
                     f"(train_loss): {loss.item():.3f} "
-                    f"(+/- mix): {sum(target)/len(target):.3f} "
+                    #f"(+/- mix): {sum(target)/len(target):.3f} "
                     f"(test_loss): {test_loss:.3f}"
                 )
 
-        average_loss = sum(train_losses) / len(train_losses)
-        save_path = wandb.config["save_path"].format(epoch_num=epoch_num, loss=average_loss)
-        torch.save(model.state_dict(), save_path)
+    save_model(model, epoch_num, train_losses, test_losses)

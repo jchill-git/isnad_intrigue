@@ -10,7 +10,7 @@ parser.add_argument("--test_size", type=float, default=0.2)
 if __name__ == "__main__":
     args = parser.parse_args()
 
-    isnad_mention_ids, disambiguated_ids = read_isnad_data(
+    isnad_mention_ids, disambiguated_ids, _ = read_isnad_data(
         "nameData/names.csv",
         "communities/goldStandard_goldTags.json",
         "nameData/namesWithEmbeddings_NER_strict.json"
