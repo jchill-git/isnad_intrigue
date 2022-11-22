@@ -114,7 +114,7 @@ if __name__ == "__main__":
             "num_epochs": 20,
             "batch_size": 32,
             "max_length": 32,
-            "learning_rate": 1e-7,
+            "learning_rate": 1e-6,
             "pooling_method": "cls",
             "cosine_margin": 0.0,
             "batch_logging_rate": 7,
@@ -242,6 +242,6 @@ if __name__ == "__main__":
                     f"(test_loss): {test_loss:.3f}"
                 )
 
-        average_loss = sum(losses) / len(losses)
+        average_loss = sum(train_losses) / len(train_losses)
         save_path = wandb.config["save_path"].format(epoch=epoch, loss=average_loss)
         torch.save(model.state_dict(), save_path)
