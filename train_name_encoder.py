@@ -44,7 +44,8 @@ if __name__ == "__main__":
             "max_length": 32,
             "learning_rate": 0.01,
             "momentum": 0.9,
-            "temperature": 1.0
+            "temperature": 1.0,
+            "save_path": "name_embedding_model_{epoch}_{loss}.pth"
         },
         mode="disabled"
     )
@@ -92,6 +93,8 @@ if __name__ == "__main__":
     )
 
     for epoch in range(wandb.config["num_epochs"]):
+        losses = []
+
         for (query_name, query_label), (key_names, key_labels) in zip(query_dataloader, key_dataloader):
             # reset gradient
             optimizer.zero_grad()
@@ -129,7 +132,10 @@ if __name__ == "__main__":
             optimizer.step()
 
             # log
-            wandb.log({
-                "loss": loss.item()
-            })
+            losses.append(loss.item())
+            wandb.log({"loss": loss.item()})
             print(f"loss: {loss.item()}")
+
+        average_loss = sum(losses) / len(losses)
+        save_path = wandb.config["save_path"].format(epoch=epoch, loss=average_loss)
+        torch.save(model.state_dict(), save_path)
