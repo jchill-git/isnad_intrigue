@@ -1,5 +1,6 @@
 from typing import List, Any
 
+from collections import deque
 import numpy as np
 import networkx as nx
 import matplotlib.pyplot as plt
@@ -9,6 +10,11 @@ def max_list_of_lists(list_of_lists: List[List[Any]]):
     flattened = sum(list_of_lists, [])
     flattened_without_nones = [value for value in flattened if value is not None]
     return max(flattened_without_nones)
+
+
+def match_list_shape(values, list_to_match):
+    values.reverse() # treat as value stack
+    return _match_shape(values, list_to_match)
 
 
 def show_graph(graph: nx.Graph, disambiguated_ids: List[int]):
@@ -46,5 +52,23 @@ def show_graph(graph: nx.Graph, disambiguated_ids: List[int]):
     plt.show()
 
 
-#def split_graph_labels(graph, )
-#    pass
+def _match_shape(value_stack, to_match):
+    """
+    Recursive helper function for match_list_shape
+    """
+    if not isinstance(to_match, list):
+        return value_stack.pop()
+
+    return [
+        _match_shape(value_stack, sub_list)
+        for sub_list in to_match
+    ]
+
+
+# Unit test list shape matching
+if __name__ == "__main__":
+    a = [0, 1, 2, 3, 4]
+    b = [8, [[8, [8]]], [[8], 8]]
+
+    c = match_list_shape(a, b)
+    print(c)

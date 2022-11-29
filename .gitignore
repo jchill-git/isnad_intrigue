@@ -1,0 +1,4 @@
+*.pyc
+__pycache__/
+nameData/namesWithEmbeddings_NER_strict_untuned.json
+nameData/namesWithEmbeddings_NER_strict.json

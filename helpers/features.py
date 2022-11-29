@@ -4,14 +4,11 @@ import numpy as np
 from build_social_network import create_cooccurence_graph, show_graph
 
 
-def hash_node(graph, node_id, alpha = 0.1):
-    hash = get_social_hash(graph, node_id) + alpha * get_nlp_embeddings()
-
-
-def get_social_hash(graph, node):
+def hash_node(graph, node, cooc_alpha=1.0, position_alpha=1.0, nlp_alpha=0.1):
     num_nodes = graph.number_of_nodes()
     cooc_hash = np.zeros(num_nodes)
     position_hash = np.zeros(num_nodes)
+    nlp_hash = graph[node]["embedding"] # TODO: make sure this is of type np
 
     # used for indexing
     node_ids = list(graph.nodes())
@@ -38,25 +35,23 @@ def get_social_hash(graph, node):
             graph[node][succ]["num_coocurrences"]
         )
 
-    return np.concatenate((cooc_hash, position_hash))
+    # concat relevant features
+    hash = []
+    if cooc_alpha != 0.0:
+        hash = np.concatenate((hash, cooc_hash * cooc_alpha))
+    if position_alpha != 0.0:
+        hash = np.concatenate((hash, position_hash * position_alpha))
+    if nlp_alpha != 0.0:
+        hash = np.concatenate((hash, nlp_hash * nlp_alpha))
 
-
-def load_nlp_embeddings():
-    pass
-
-
-def score_all_vertices():
-    pass
-
-
-def merge_vertices(vertices, ):
-    pass
+    return hash
 
 
 if __name__ == "__main__":
     graph, node_color = create_cooccurence_graph(
         "nameData/names_disambiguated.csv",
         "communities/goldStandard_goldTags.json",
+        "nameData/namesWithEmbeddings_NER_strict.json",
         self_edges=True,
         max_isnads=1,
     )
