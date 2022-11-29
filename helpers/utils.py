@@ -24,8 +24,8 @@ def invert_list(values):
     values_flattened_inverted = [not values for values in values_flattened]
 
     return match_list_shape(values_flattened_inverted, values_copy)
-
-
+    
+    
 def show_graph(graph: nx.Graph, disambiguated_ids: List[int]):
     positions = nx.spring_layout(graph)
 
