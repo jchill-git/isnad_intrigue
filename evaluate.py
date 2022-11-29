@@ -6,8 +6,8 @@ from helpers.utils import show_graph
 
 if __name__ == "__main__":
     # load in true data
-    true_isnad_mention_ids, true_disambiguated_ids = read_isnad_data(
-        "nameData/names_disambiguated.csv",
+    true_isnad_mention_ids, true_disambiguated_ids, _ = read_isnad_data(
+        "nameData/names.csv",
         "communities/goldStandard_goldTags.json",
         "nameData/namesWithEmbeddings_NER_strict.json"
     )
