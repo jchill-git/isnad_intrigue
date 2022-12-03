@@ -47,9 +47,11 @@ def hash_node(graph, node, cooc_alpha=1.0, position_alpha=1.0, nlp_alpha=0.1):
 
     return hash
 
-
+#mention ids, list of disambiguated IDs, list of embeddings
 def calculate_query_target_similarities(graph):
     pass
+    #current_graph=copy(graph)
+
 
 
 if __name__ == "__main__":

@@ -5,9 +5,12 @@ import networkx as nx
 
 def create_cooccurence_graph(
     isnad_mention_ids: List[List[int]],
+    isnad_mention_embeddings: List[List[List[float]]],
     self_edges: bool = False,
     max_isnads: Optional[int] = None,
 ):
+
+
     # truncate to max_isnads
     max_isnads = max_isnads or len(isnad_mention_ids)
     isnad_mention_ids = isnad_mention_ids[:max_isnads]
@@ -18,6 +21,23 @@ def create_cooccurence_graph(
     # add cliques
     for mention_ids in isnad_mention_ids:
         _add_clique(graph, mention_ids, self_edges=self_edges)
+
+
+    #flattened list of mention embeddings and mention ids
+    isnad_mention_embeddings_flattened = sum(isnad_mention_embeddings, [])
+    isnad_mention_ids_flattened = sum(isnad_mention_ids,[])
+
+    #dictionary of node/mention ids to embeddings
+    embeddings_dictionary=dict()
+    for mention_id, mention_embedding in zip(isnad_mention_ids_flattened, isnad_mention_embeddings_flattened):
+        embeddings_dictionary[mention_id]=mention_embedding
+
+
+    # label nodes with embeddings
+    nx.set_node_attributes(graph,embeddings_dictionary,'embedding')
+
+    #label nodes with number of mentions
+    nx.set_node_attributes(graph,1,'number_of_mentions')
 
     return graph
 
