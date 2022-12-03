@@ -5,7 +5,7 @@ import json
 import numpy as np
 from parse import parse
 
-from helpers.utils import max_list_of_lists, match_list_shape
+from utils import max_list_of_lists, match_list_shape
 
 
 def read_isnad_data(

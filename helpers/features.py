@@ -1,15 +1,55 @@
+from typing import List
+
 import networkx as nx
 import numpy as np
 
 from graph import create_cooccurence_graph
-from utils import show_graph
+from utils import get_ambiguous_ids, show_graph
+
+
+class SimilarityMatrix():
+    def __init__(
+        self,
+        matrix: np.ndarray,
+        ambiguous_ids: List[int],
+        disambiguated_ids: List[int]
+    ):
+        self.query_ids = ambiguous_ids
+        self.target_ids = disambiguated_ids
+        self._matrix = matrix
+
+
+    def __getitem__(self, query_id, target_id=None):
+        query_index = self.query_ids.index(query_id)
+
+        if target_id is None:
+            return self._matrix[query_index]
+
+        else:
+            target_index = self.target_ids.index(query_id)
+            return self._matrix[query_index, target_index]
+
+
+    def argsort(self):
+        print(self._matrix.shape)
+        sorted_indexes = np.argsort(self._matrix, axis=0)
+        print(sorted_indexes)
+        return [
+            (self.query_ids[query_index], self.target_ids[target_index])
+            for query_index, target_index in zip(*sorted_indexes)
+        ]
+
+
+    def argmax(self):
+        query_index, target_index = np.argmax(self._matrix)
+        return self.query_ids[query_index], self.target_ids[target_index]
 
 
 def hash_node(graph, node, cooc_alpha=1.0, position_alpha=1.0, nlp_alpha=0.1):
     num_nodes = graph.number_of_nodes()
     cooc_hash = np.zeros(num_nodes)
     position_hash = np.zeros(num_nodes)
-    nlp_hash = graph[node]["embedding"] # TODO: make sure this is of type np
+    nlp_hash = np.array([]) # TODO: make sure this is of type np
 
     # used for indexing
     node_ids = list(graph.nodes())
@@ -48,8 +88,25 @@ def hash_node(graph, node, cooc_alpha=1.0, position_alpha=1.0, nlp_alpha=0.1):
     return hash
 
 
-def calculate_query_target_similarities(graph):
-    pass
+def get_similarity_matrix(graph, isnad_mention_ids, disambiguated_ids):
+    ambiguous_ids = get_ambiguous_ids(isnad_mention_ids, disambiguated_ids)
+
+    matrix = np.array([
+        [
+            cosine_similarity(
+                hash_node(graph, ambiguous_id),
+                hash_node(graph, disambiguated_id)
+            )
+            for disambiguated_id in disambiguated_ids
+        ]
+        for ambiguous_id in ambiguous_ids
+    ])
+
+    return SimilarityMatrix(matrix, ambiguous_ids, disambiguated_ids)
+
+
+def cosine_similarity(a, b):
+    return np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b))
 
 
 if __name__ == "__main__":
