@@ -48,6 +48,10 @@ def hash_node(graph, node, cooc_alpha=1.0, position_alpha=1.0, nlp_alpha=0.1):
     return hash
 
 
+def calculate_query_target_similarities(graph):
+    pass
+
+
 if __name__ == "__main__":
     graph, node_color = create_cooccurence_graph(
         "nameData/names_disambiguated.csv",
