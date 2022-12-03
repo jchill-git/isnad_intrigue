@@ -1,7 +1,8 @@
 import networkx as nx
 import numpy as np
 
-from build_social_network import create_cooccurence_graph, show_graph
+from graph import create_cooccurence_graph
+from utils import show_graph
 
 
 def hash_node(graph, node, cooc_alpha=1.0, position_alpha=1.0, nlp_alpha=0.1):

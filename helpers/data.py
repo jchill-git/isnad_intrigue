@@ -134,7 +134,7 @@ def random_split_test_mentions(
 def read_isnad_names(isnad_names_path: str):
     isnad_names = []
 
-    with open(isnad_names_path) as names_csv_file:
+    with open(isnad_names_path, encoding=UTF-8) as names_csv_file:
         reader = csv.reader(names_csv_file)
         _ = next(reader)
 
@@ -146,7 +146,7 @@ def read_isnad_names(isnad_names_path: str):
 
 
 def _read_isnad_lengths(file_path: str):
-    with open(file_path) as names_csv_file:
+    with open(file_path, encoding='UTF-8') as names_csv_file:
         reader = csv.reader(names_csv_file)
         _ = next(reader)
         return [
@@ -173,7 +173,7 @@ def _read_isnad_labels(file_path: str):
 
 
 def _read_isnad_embeddings(file_path: str):
-    with open(file_path, "r") as embeddings_file:
+    with open(file_path, "r", encoding='UTF-8') as embeddings_file:
         mention_embeddings = [json.loads(line) for line in embeddings_file]
 
     isnad_mention_embeddings = []
