@@ -60,14 +60,14 @@ class SimilarityMatrix():
 
 
     def __repr__(self):
-        print(self._matrix.shape)
         representation = np.zeros((self._matrix.shape[0] + 1, self._matrix.shape[1] + 1))
-        print(representation.shape)
 
         representation[0, 1:] = self.target_ids
         representation[1:, 0] = self.query_ids
         representation[1:, 1:] = self._matrix
-        return str(representation.astype(np.float16))
+
+        representation_rounded = (representation * 10).astype(np.int)
+        return str(representation_rounded)
 
 
 def hash_node(graph, node, cooc_alpha=1.0, position_alpha=1.0, nlp_alpha=0.1):
@@ -116,11 +116,26 @@ def hash_node(graph, node, cooc_alpha=1.0, position_alpha=1.0, nlp_alpha=0.1):
 def get_similarity_matrix(graph, isnad_mention_ids, disambiguated_ids):
     ambiguous_ids = get_ambiguous_ids(isnad_mention_ids, disambiguated_ids)
 
+    node_hashes = {
+        int(node): hash_node(graph, node)
+        for node in graph.nodes
+    }
+
+    node_neighbors = {
+        int(node): list(graph.successors(node)) + list(graph.predecessors(node))
+        for node in graph.nodes
+    }
+
     matrix = np.array([
         [
-            cosine_similarity(
-                hash_node(graph, ambiguous_id),
-                hash_node(graph, disambiguated_id)
+            0 if (
+                disambiguated_id in node_neighbors[ambiguous_id] or
+                ambiguous_id == disambiguated_id
+            ) else (
+                cosine_similarity(
+                    node_hashes[ambiguous_id],
+                    node_hashes[disambiguated_id]
+                )
             )
             for disambiguated_id in disambiguated_ids
         ]

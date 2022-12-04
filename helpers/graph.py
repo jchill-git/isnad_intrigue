@@ -2,6 +2,9 @@ from typing import Optional, List
 
 import networkx as nx
 
+from data import read_isnad_data
+from utils import show_graph
+
 
 def create_cooccurence_graph(
     isnad_mention_ids: List[List[int]],
@@ -70,3 +73,32 @@ def _add_clique(graph, isnad_node_ids, self_edges=False):
                     num_coocurrences=1,
                     relative_position_sum=relative_position
                 )
+
+
+if __name__ == "__main__":
+    # load in data
+    isnad_mention_ids, disambiguated_ids, mention_embeddings = read_isnad_data(
+        "nameData/names.csv",
+        "communities/goldStandard_goldTags.json",
+        None#"contrastive_embeddings.json"
+    )
+
+    # truncate for testing
+    isnad_mention_ids = isnad_mention_ids[:2]
+    disambiguated_ids = [
+        id
+        for id in disambiguated_ids
+        if id in sum(isnad_mention_ids, [])
+    ]
+    print(isnad_mention_ids)
+
+    graph = create_cooccurence_graph(
+        isnad_mention_ids,
+        #_mention_embeddings,
+        self_edges=False
+    )
+
+    show_graph(
+        graph,
+        disambiguated_ids
+    )
