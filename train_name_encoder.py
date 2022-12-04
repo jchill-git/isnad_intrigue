@@ -119,7 +119,7 @@ if __name__ == "__main__":
         entity="kylesayrs",
         config={
             "pretrained_model": "lanwuwei/GigaBERT-v3-Arabic-and-English",
-            "num_epochs": 20,
+            "num_epochs": 6,
             "batch_size": 32,
             "max_length": 32,
             "learning_rate": 1e-6,
@@ -128,7 +128,7 @@ if __name__ == "__main__":
             "batch_logging_rate": 7,
             "save_path": "checkpoints/encoder_{epoch_num}_{loss:.3f}"
         },
-        mode="disabled"
+        mode="online"
     )
     assert wandb.config["pooling_method"] in ["cls", "mean"]
 

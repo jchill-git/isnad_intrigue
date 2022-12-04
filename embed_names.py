@@ -1,5 +1,8 @@
 """
-usage: python3 embed_names.py nameData/names.csv checkpoints/nem_0_0.000 name_embeddings.json
+usage: python3 embed_names.py
+               nameData/names.csv
+               checkpoints/encoder_5_0.024
+               contrastive_embeddings.json
 """
 
 import json
@@ -45,13 +48,13 @@ def write_outputs(outputs, isnad_names, out_file_path):
     writing_progress = tqdm.tqdm(total=len(outputs))
     with open(args.out_file_path, "w") as out_file:
         output_index = 0
-        for isnad_index in range(len(isnad_names)):
-            for mention_index in range(len(isnad_names[isnad_index])):
+        for isnad_index, names in enumerate(isnad_names):
+            for mention_index, name in enumerate(names):
                 id = f"JK_000916_{isnad_index}_{mention_index}"
                 embedding = outputs[output_index].tolist()
 
-                data = {"id": id, "embedding": embedding}
-                out_file.write(json.dumps(data) + "\n")
+                data = {"id": id, "name": name, "embedding": embedding}
+                out_file.write(json.dumps(data, ensure_ascii=False) + "\n")
 
                 output_index += 1
                 writing_progress.update(1)
@@ -70,7 +73,7 @@ if __name__ == "__main__":
     dataloader = DataLoader(
         names,
         batch_size=args.batch_size,
-        shuffle=True,
+        shuffle=False,
         num_workers=0,
     )
 
