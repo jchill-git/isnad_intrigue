@@ -25,22 +25,42 @@ def create_cooccurence_graph(
 
     #flattened list of mention embeddings and mention ids
     isnad_mention_embeddings_flattened = sum(isnad_mention_embeddings, [])
-    isnad_mention_ids_flattened = sum(isnad_mention_ids,[])
+    isnad_mention_ids_flattened = sum(isnad_mention_ids, [])
 
+    #dictionary of the number of mentions captured by each node
+    num_mention_dictionary=dict()
     #dictionary of node/mention ids to embeddings
     embeddings_dictionary=dict()
     for mention_id, mention_embedding in zip(isnad_mention_ids_flattened, isnad_mention_embeddings_flattened):
-        embeddings_dictionary[mention_id]=mention_embedding
+        #first mention, add node to dictionaries
+        if mention_id not in embeddings_dictionary:
+            embeddings_dictionary[mention_id]=mention_embedding
+            num_mention_dictionary[mention_id]=1
+        #subsequent mentions, average in the mention embedding and increment the number of nodes
+        else:
+            curr_embedding=embeddings_dictionary[mention_id]
+            curr_number_of_mentions=num_mention_dictionary[mention_id]+1
 
+            #calculate new average embedding
+            updated_embedding=mean_embedding(curr_embedding,curr_number_of_mentions,mention_embedding)
+
+            #update dictionaries
+            embeddings_dictionary[mention_id]=updated_embedding
+            num_mention_dictionary[mention_id]=curr_number_of_mentions
 
     # label nodes with embeddings
     nx.set_node_attributes(graph,embeddings_dictionary,'embedding')
 
     #label nodes with number of mentions
-    nx.set_node_attributes(graph,1,'number_of_mentions')
+    nx.set_node_attributes(graph,num_mention_dictionary,'number_of_mentions')
 
     return graph
 
+def mean_embedding(current_embedding, num_mentions, embedding_to_add):
+    return [
+        ((val * (num_mentions - 1) + new_val) )/ num_mentions
+        for val, new_val in zip(current_embedding, embedding_to_add)
+    ]
 
 def _create_isnad_graph(isnad_data):
     """

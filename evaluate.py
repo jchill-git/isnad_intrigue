@@ -38,11 +38,6 @@ if __name__ == "__main__":
         max_isnads=None,
     )
 
-    for node,data in test_graph.nodes.items():
-        print("NODE_ID:",node,data)
-    
-    print(test_mention_ids)
-
     #show_graph(test_graph, test_disambiguated_ids)
 
     # evaluation
