@@ -60,7 +60,7 @@ def split_data(
 ) -> Tuple[List[List[int]], List[int]]:
     """
     Creates a test set of mention ids by sequentally
-    ambiguating previous disambiguous mentions
+    ambiguating previously disambiguous mentions
     """
     if test_mentions is None == test_size is None:
         raise ValueError(
