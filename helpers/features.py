@@ -19,30 +19,55 @@ class SimilarityMatrix():
         self._matrix = matrix
 
 
-    def __getitem__(self, query_id, target_id=None):
-        query_index = self.query_ids.index(query_id)
+    def __getitem__(self, ids):
+        if isinstance(ids, tuple):
+            query_id, target_id = ids
 
-        if target_id is None:
-            return self._matrix[query_index]
+            # if both are targets (in the case of neighbors)
+            if query_id in self.target_ids:
+                return 1 if query_id == target_id else 0
+
+            query_index = self.query_ids.index(query_id)
+            target_index = self.target_ids.index(target_id)
+
+            return self._matrix[query_index, target_index]
 
         else:
-            target_index = self.target_ids.index(query_id)
-            return self._matrix[query_index, target_index]
+            query_id = ids
+            query_index = self.query_ids.index(query_id)
+            return self._matrix[query_index]
 
 
     def argsort(self):
-        print(self._matrix.shape)
-        sorted_indexes = np.argsort(self._matrix, axis=0)
-        print(sorted_indexes)
+        # TODO: Come back and fix this crap
+        sorted_indexes = list(zip(*np.unravel_index(
+            np.argsort(self._matrix, axis=None),
+            self._matrix.shape
+        )))
         return [
             (self.query_ids[query_index], self.target_ids[target_index])
-            for query_index, target_index in zip(*sorted_indexes)
+            for query_index, target_index in sorted_indexes
         ]
 
 
     def argmax(self):
-        query_index, target_index = np.argmax(self._matrix)
+        # TODO: Come back and fix this crap
+        query_index, target_index = np.unravel_index(
+            np.argmax(self._matrix, axis=None),
+            self._matrix.shape
+        )
         return self.query_ids[query_index], self.target_ids[target_index]
+
+
+    def __repr__(self):
+        print(self._matrix.shape)
+        representation = np.zeros((self._matrix.shape[0] + 1, self._matrix.shape[1] + 1))
+        print(representation.shape)
+
+        representation[0, 1:] = self.target_ids
+        representation[1:, 0] = self.query_ids
+        representation[1:, 1:] = self._matrix
+        return str(representation.astype(np.float16))
 
 
 def hash_node(graph, node, cooc_alpha=1.0, position_alpha=1.0, nlp_alpha=0.1):
