@@ -5,7 +5,7 @@ import json
 import numpy as np
 from parse import parse
 
-from utils import max_list_of_lists, match_list_shape
+from helpers.utils import max_list_of_lists, match_list_shape
 
 
 def read_isnad_data(
@@ -60,7 +60,7 @@ def split_data(
 ) -> Tuple[List[List[int]], List[int]]:
     """
     Creates a test set of mention ids by sequentally
-    ambiguating previously disambiguous mentions
+    ambiguating the given test mentions
     """
     if test_mentions is None == test_size is None:
         raise ValueError(

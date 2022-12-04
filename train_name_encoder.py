@@ -30,14 +30,17 @@ class NamesDataset(Dataset):
         # split data
         with open(test_mentions_path, "r") as test_mentions_file:
             test_mentions = json.load(test_mentions_file)
-        mentions_split = invert_list(test_mentions) if is_train else test_mentions
+        mentions_to_ambiguate = test_mentions if is_train else invert_list(test_mentions)
+
+        # train set: test -> ambiguous
+        # test set: train -> ambiguous
         isnad_mention_ids, disambiguated_ids = split_data(
             isnad_mention_ids,
             disambiguated_ids,
-            mentions_split
+            mentions_to_ambiguate
         )
 
-        # only include disambiguated samples
+        # remove ambigous samples
         isnad_names_flattened = sum(isnad_names, [])
         mention_ids_flattened = sum(isnad_mention_ids, [])
         names = []
@@ -125,7 +128,7 @@ if __name__ == "__main__":
             "batch_logging_rate": 7,
             "save_path": "checkpoints/encoder_{epoch_num}_{loss:.3f}"
         },
-        mode="online"
+        mode="disabled"
     )
     assert wandb.config["pooling_method"] in ["cls", "mean"]
 

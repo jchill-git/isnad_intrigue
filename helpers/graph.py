@@ -2,8 +2,8 @@ from typing import Optional, List
 
 import networkx as nx
 
-from data import read_isnad_data
-from utils import show_graph
+from helpers.data import read_isnad_data
+from helpers.utils import show_graph
 
 
 def create_cooccurence_graph(

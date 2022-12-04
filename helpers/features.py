@@ -3,8 +3,8 @@ from typing import List
 import networkx as nx
 import numpy as np
 
-from graph import create_cooccurence_graph
-from utils import get_ambiguous_ids, show_graph
+from helpers.graph import create_cooccurence_graph
+from helpers.utils import get_ambiguous_ids, show_graph
 
 
 class SimilarityMatrix():

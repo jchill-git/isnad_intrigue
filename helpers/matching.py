@@ -4,10 +4,10 @@ import time
 import numpy as np
 import networkx as nx
 
-from data import read_isnad_data, split_data
-from graph import create_cooccurence_graph
-from features import get_similarity_matrix, SimilarityMatrix
-from utils import get_ambiguous_ids
+from helpers.data import read_isnad_data, split_data
+from helpers.graph import create_cooccurence_graph
+from helpers.features import get_similarity_matrix, SimilarityMatrix
+from helpers.utils import get_ambiguous_ids
 
 
 def merge_nodes(
