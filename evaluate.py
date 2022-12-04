@@ -6,10 +6,10 @@ from helpers.utils import show_graph
 
 if __name__ == "__main__":
     # load in true data
-    true_isnad_mention_ids, true_disambiguated_ids, _ = read_isnad_data(
+    true_isnad_mention_ids, true_disambiguated_ids, isnad_mention_embeddings = read_isnad_data(
         "nameData/names.csv",
         "communities/goldStandard_goldTags.json",
-        "nameData/namesWithEmbeddings_NER_strict.json"
+        "contrastive_embeddings.json"
     )
 
     # split into test graph
@@ -27,14 +27,15 @@ if __name__ == "__main__":
         test_mentions=test_mentions,
         #test_size=0.9
     )
-    print(test_mention_ids)
 
     test_graph = create_cooccurence_graph(
         test_mention_ids,
+        isnad_mention_embeddings,
         self_edges=False,
         max_isnads=None,
     )
-    show_graph(test_graph, test_disambiguated_ids)
+
+    #show_graph(test_graph, test_disambiguated_ids)
 
     # evaluation
 

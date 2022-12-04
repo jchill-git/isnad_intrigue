@@ -2,9 +2,13 @@ from typing import Optional, List
 
 import networkx as nx
 
+from helpers.data import read_isnad_data
+from helpers.utils import show_graph
+
 
 def create_cooccurence_graph(
     isnad_mention_ids: List[List[int]],
+    isnad_mention_embeddings: List[List[List[float]]],
     self_edges: bool = False,
     max_isnads: Optional[int] = None,
 ):
@@ -19,8 +23,46 @@ def create_cooccurence_graph(
     for mention_ids in isnad_mention_ids:
         _add_clique(graph, mention_ids, self_edges=self_edges)
 
+
+    # flattened list of mention embeddings and mention ids
+    isnad_mention_embeddings_flattened = sum(isnad_mention_embeddings, [])
+    isnad_mention_ids_flattened = sum(isnad_mention_ids, [])
+
+    num_mention_dictionary = {}
+    embeddings_dictionary = {}
+    for mention_id, mention_embedding in zip(isnad_mention_ids_flattened, isnad_mention_embeddings_flattened):
+        # first mention, add node to dictionaries
+        if mention_id not in embeddings_dictionary:
+            embeddings_dictionary[mention_id] = mention_embedding
+            num_mention_dictionary[mention_id] = 1
+
+        # subsequent mentions, average in the mention embedding and increment the number of nodes
+        else:
+            # calculate new average embedding
+            curr_number_of_mentions=num_mention_dictionary[mention_id] + 1
+            updated_embedding = _update_embedding(
+                embeddings_dictionary[mention_id],
+                curr_number_of_mentions,
+                mention_embedding
+            )
+
+            # update dictionaries
+            embeddings_dictionary[mention_id] = updated_embedding
+            num_mention_dictionary[mention_id] = curr_number_of_mentions
+
+    # label nodes with embeddings
+    nx.set_node_attributes(graph, embeddings_dictionary, "embedding")
+
+    #label nodes with number of mentions
+    nx.set_node_attributes(graph, num_mention_dictionary, "number_of_mentions")
+
     return graph
 
+def _update_embedding(current_embedding, num_mentions, embedding_to_add):
+    return [
+        ((val * (num_mentions - 1) + new_val) )/ num_mentions
+        for val, new_val in zip(current_embedding, embedding_to_add)
+    ]
 
 def _create_isnad_graph(isnad_data):
     """
@@ -70,3 +112,32 @@ def _add_clique(graph, isnad_node_ids, self_edges=False):
                     num_coocurrences=1,
                     relative_position_sum=relative_position
                 )
+
+
+if __name__ == "__main__":
+    # load in data
+    isnad_mention_ids, disambiguated_ids, mention_embeddings = read_isnad_data(
+        "nameData/names.csv",
+        "communities/goldStandard_goldTags.json",
+        None#"contrastive_embeddings.json"
+    )
+
+    # truncate for testing
+    isnad_mention_ids = isnad_mention_ids[:2]
+    disambiguated_ids = [
+        id
+        for id in disambiguated_ids
+        if id in sum(isnad_mention_ids, [])
+    ]
+    print(isnad_mention_ids)
+
+    graph = create_cooccurence_graph(
+        isnad_mention_ids,
+        #_mention_embeddings,
+        self_edges=False
+    )
+
+    show_graph(
+        graph,
+        disambiguated_ids
+    )

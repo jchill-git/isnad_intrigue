@@ -1,15 +1,80 @@
+from typing import List
+
 import networkx as nx
 import numpy as np
 
-from graph import create_cooccurence_graph
-from utils import show_graph
+from helpers.graph import create_cooccurence_graph
+from helpers.utils import get_ambiguous_ids, show_graph
+
+
+class SimilarityMatrix():
+    def __init__(
+        self,
+        matrix: np.ndarray,
+        ambiguous_ids: List[int],
+        disambiguated_ids: List[int]
+    ):
+        self.query_ids = ambiguous_ids
+        self.target_ids = disambiguated_ids
+        self._matrix = matrix
+
+
+    def __getitem__(self, ids):
+        if isinstance(ids, tuple):
+            query_id, target_id = ids
+
+            # if both are targets (in the case of neighbors)
+            if query_id in self.target_ids:
+                return 1 if query_id == target_id else 0
+
+            query_index = self.query_ids.index(query_id)
+            target_index = self.target_ids.index(target_id)
+
+            return self._matrix[query_index, target_index]
+
+        else:
+            query_id = ids
+            query_index = self.query_ids.index(query_id)
+            return self._matrix[query_index]
+
+
+    def argsort(self):
+        # TODO: Come back and fix this crap
+        sorted_indexes = list(zip(*np.unravel_index(
+            np.argsort(self._matrix, axis=None),
+            self._matrix.shape
+        )))
+        return [
+            (self.query_ids[query_index], self.target_ids[target_index])
+            for query_index, target_index in sorted_indexes
+        ]
+
+
+    def argmax(self):
+        # TODO: Come back and fix this crap
+        query_index, target_index = np.unravel_index(
+            np.argmax(self._matrix, axis=None),
+            self._matrix.shape
+        )
+        return self.query_ids[query_index], self.target_ids[target_index]
+
+
+    def __repr__(self):
+        representation = np.zeros((self._matrix.shape[0] + 1, self._matrix.shape[1] + 1))
+
+        representation[0, 1:] = self.target_ids
+        representation[1:, 0] = self.query_ids
+        representation[1:, 1:] = self._matrix
+
+        representation_rounded = (representation * 10).astype(np.int)
+        return str(representation_rounded)
 
 
 def hash_node(graph, node, cooc_alpha=1.0, position_alpha=1.0, nlp_alpha=0.1):
     num_nodes = graph.number_of_nodes()
     cooc_hash = np.zeros(num_nodes)
     position_hash = np.zeros(num_nodes)
-    nlp_hash = graph[node]["embedding"] # TODO: make sure this is of type np
+    nlp_hash = np.array([]) # TODO: make sure this is of type np
 
     # used for indexing
     node_ids = list(graph.nodes())
@@ -48,8 +113,40 @@ def hash_node(graph, node, cooc_alpha=1.0, position_alpha=1.0, nlp_alpha=0.1):
     return hash
 
 
-def calculate_query_target_similarities(graph):
-    pass
+def get_similarity_matrix(graph, isnad_mention_ids, disambiguated_ids):
+    ambiguous_ids = get_ambiguous_ids(isnad_mention_ids, disambiguated_ids)
+
+    node_hashes = {
+        int(node): hash_node(graph, node)
+        for node in graph.nodes
+    }
+
+    node_neighbors = {
+        int(node): list(graph.successors(node)) + list(graph.predecessors(node))
+        for node in graph.nodes
+    }
+
+    matrix = np.array([
+        [
+            0 if (
+                disambiguated_id in node_neighbors[ambiguous_id] or
+                ambiguous_id == disambiguated_id
+            ) else (
+                cosine_similarity(
+                    node_hashes[ambiguous_id],
+                    node_hashes[disambiguated_id]
+                )
+            )
+            for disambiguated_id in disambiguated_ids
+        ]
+        for ambiguous_id in ambiguous_ids
+    ])
+
+    return SimilarityMatrix(matrix, ambiguous_ids, disambiguated_ids)
+
+
+def cosine_similarity(a, b):
+    return np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b))
 
 
 if __name__ == "__main__":
