@@ -1,7 +1,8 @@
 from typing import List, Optional, Tuple
 
-import networkx as nx
 import numpy as np
+import networkx as nx
+from concurrent.futures import ThreadPoolExecutor
 
 from helpers.graph import create_cooccurence_graph
 from helpers.utils import get_ambiguous_ids, show_graph
@@ -70,13 +71,27 @@ class SimilarityScorer():
 
 
     def argsort_ids(self, x_ids, y_ids):
-        sub_similarities = np.array([
-            [
-                self[x_id, y_id]
-                for y_id in y_ids
+        import tqdm
+
+        with ThreadPoolExecutor(max_workers=5) as executor:
+            sub_similarities = [
+                [
+                    executor.submit(self.__getitem__, (x_id, y_id))
+                    #self[x_id, y_id]
+                    for y_id in y_ids
+                ]
+                for x_id in tqdm.tqdm(x_ids)
             ]
-            for x_id in x_ids
-        ])
+
+            sub_similarities = [
+                [
+                    future.result()
+                    for future in row
+                ]
+                for row in tqdm.tqdm(sub_similarities)
+            ]
+
+            sub_similarities = np.array(sub_similarities)
 
         # TODO: Come back and fix this crap
         sorted_sub_indexes = list(zip(*np.unravel_index(

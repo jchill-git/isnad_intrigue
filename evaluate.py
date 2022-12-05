@@ -25,8 +25,8 @@ if __name__ == "__main__":
         test_mentions = json.load(test_mentions_file)
 
     # truncate for testing
-    true_isnad_mention_ids = true_isnad_mention_ids[:50]
-    test_mentions = test_mentions[:50]
+    true_isnad_mention_ids = true_isnad_mention_ids
+    test_mentions = test_mentions
 
     # split
     test_mention_ids, test_disambiguated_ids = split_data(

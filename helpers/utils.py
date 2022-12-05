@@ -1,4 +1,4 @@
-from typing import List, Any
+from typing import List, Any, Optional
 
 from collections import deque
 import numpy as np
@@ -44,9 +44,22 @@ def invert_list(values):
 
 def get_ambiguous_ids(
     isnad_mention_ids: List[List[int]],
-    disambiguated_ids: List[int]
+    disambiguated_ids: List[int],
+    is_labeled: Optional[List[List[bool]]] = None
 ) -> List[int]:
-    unique_ids = np.unique(sum(isnad_mention_ids, []))
+    isnad_mention_ids_flattened = sum(isnad_mention_ids, [])
+    is_labeled_flattened = (
+        sum(is_labeled, [])
+        if is_labeled is not None else
+        [True for _ in range(len(isnad_mention_ids_flattened))]
+    )
+    unique_ids = np.unique(
+        [
+            id
+            for index, id in enumerate(isnad_mention_ids_flattened)
+            if is_labeled_flattened[index]
+        ]
+    )
     ambiguous_ids = [id for id in unique_ids if id not in disambiguated_ids]
 
     return ambiguous_ids

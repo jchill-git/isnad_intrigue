@@ -127,6 +127,7 @@ def match_subgraphs(
             _ambiguous_ids,
             _disambiguated_ids
         ):
+            print(similarities)
             # if they are mergable, merge
             if can_merge_neighborhoods(
                 graph,
@@ -143,7 +144,6 @@ def match_subgraphs(
                     target_id,
                     is_labeled=is_labeled,
                 )
-                print(similarities)
                 break
 
         else:
@@ -156,7 +156,6 @@ def match_subgraphs(
                 target_id=None,
                 is_labeled=is_labeled,
             )
-            print(similarities)
 
         progress.update(1)
 
