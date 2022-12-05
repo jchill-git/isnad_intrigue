@@ -5,6 +5,7 @@ from helpers.features import cosine_similarity
 
 _SIMILARITY_THRESHOLD = 0.0
 
+
 def test_contrastive_embeddings():
     # load in true data
     true_isnad_mention_ids, true_disambiguated_ids, isnad_mention_embeddings = read_isnad_data(
