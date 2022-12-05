@@ -3,7 +3,7 @@ import numpy as np
 
 from helpers.data import read_isnad_data, split_data
 from helpers.graph import create_cooccurence_graph
-from helpers.utils import show_graph, get_mentions_str, get_ambiguous_ids
+from helpers.utils import show_graph, get_ambiguous_ids, get_labeled_mentions
 from helpers.matching import match_subgraphs
 from helpers.evaluation import create_communities_file, createClusters, calc_conLL
 
@@ -19,6 +19,7 @@ if __name__ == "__main__":
         gold_path,
         embeddings_path
     )
+    labeled_mentions = get_labeled_mentions(true_isnad_mention_ids, true_disambiguated_ids)
 
     # split into test graph
     with open("test_mentions.json", "r") as test_mentions_file:
@@ -33,7 +34,7 @@ if __name__ == "__main__":
         true_isnad_mention_ids,
         true_disambiguated_ids,
         test_mentions=test_mentions,
-        #test_size=0.2
+        #test_size=0.0
     )
 
     # print some stats
@@ -58,17 +59,26 @@ if __name__ == "__main__":
         nlp_alpha = 1.0,
     )
 
-    #pred_mention_ids = true_isnad_mention_ids # truth
+    pred_mention_ids = true_isnad_mention_ids # truth
     #pred_mention_ids = test_mention_ids # baseline
 
     # create community_file
-    create_communities_file(output_file_name, pred_mention_ids, test_mentions)
+    create_communities_file(output_file_name, pred_mention_ids, labeled_mentions=labeled_mentions)
 
     # create model clusters
     modelClusters = createClusters(output_file_name)
 
     # create goldStandard clusters
-    goldClusters = createClusters(gold_path, test_mentions=test_mentions)
+    goldClusters = createClusters(gold_path, labeled_mentions=labeled_mentions)
 
     # calculate ConLL score
     calc_conLL(goldClusters, modelClusters)
+
+
+# 2. not check ambiguous -> ambiguous neighbors
+
+# 3. replace similarity with generator - Kyle
+# 4. mulit-threading
+
+# a. jaccard index
+# b. deep features

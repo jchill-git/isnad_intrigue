@@ -113,6 +113,7 @@ def match_subgraphs(
         # compute similarities
         similarity_matrix = SimilarityMatrix.from_data(
             graph,
+            _disambiguated_ids,
             **hash_kwargs
         )
 

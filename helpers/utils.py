@@ -6,16 +6,20 @@ import networkx as nx
 import matplotlib.pyplot as plt
 
 
-def get_mentions_str(
-    mentions: List[List[bool]],
-) -> List[str]:
-    labeled_mentions = []
-    for isnad_index, isnad in enumerate(mentions):
-        for mention_index, is_test in enumerate(mentions):
-            if is_test:
-                labeled_mentions.append(f"JK_000916_{isnad_index}_{mention_index}")
 
-    return labeled_mentions
+def get_labeled_mentions(
+    true_isnad_mention_ids: List[List[int]],
+    true_disambiguated_ids: List[int]
+):
+    true_isnad_mention_ids_copy = true_isnad_mention_ids.copy()
+    mention_ids_flattened = sum(true_isnad_mention_ids, [])
+    labeled_mentions_flattened = [
+        mention_id in true_disambiguated_ids
+        for mention_id in mention_ids_flattened
+    ]
+
+    return match_list_shape(labeled_mentions_flattened, true_isnad_mention_ids_copy)
+
 
 
 def max_list_of_lists(list_of_lists: List[List[Any]]):
