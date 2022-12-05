@@ -1,6 +1,6 @@
 from typing import List, Union, Tuple
 
-import time
+import tqdm
 import numpy as np
 import networkx as nx
 
@@ -59,30 +59,25 @@ def can_merge_neighborhoods(
 def match_subgraphs(
     isnad_mention_ids: List[List[int]],
     disambiguated_ids: List[int],
-    mention_embeddings: List[List[List[float]]],
+    isnad_mention_embeddings: List[List[List[float]]],
     threshold: float
 ):
     # avoid modifying inputs
     _isnad_mention_ids = isnad_mention_ids.copy()
     _disambiguated_ids = disambiguated_ids.copy()
-    _mention_embeddings = mention_embeddings
 
+    progress = tqdm.tqdm(total=len(disambiguated_ids))
     while len(_disambiguated_ids) > 0:
         # create graph
         graph = create_cooccurence_graph(
             _isnad_mention_ids,
-            #_mention_embeddings,
+            isnad_mention_embeddings,
             self_edges=False
         )
 
         # compute similarities
-        start = time.time()
         similarity_matrix = get_similarity_matrix(graph, _isnad_mention_ids, _disambiguated_ids)
-        print(time.time() - start)
         print(similarity_matrix)
-        print(similarity_matrix._matrix.shape)
-
-        exit(0)
 
         # find query and target ids with the highest similarity
         for query_id, target_id in similarity_matrix.argsort():
@@ -101,7 +96,6 @@ def match_subgraphs(
                     query_id,
                     target_id
                 )
-                break
 
         else:
             # if nothing is mergable, start uniquely disambiguating
@@ -113,7 +107,7 @@ def match_subgraphs(
                 target_id=None
             )
 
-        break
+        progress.update(1)
 
 
 if __name__ == "__main__":

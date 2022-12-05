@@ -117,7 +117,7 @@ def get_similarity_matrix(graph, isnad_mention_ids, disambiguated_ids):
     ambiguous_ids = get_ambiguous_ids(isnad_mention_ids, disambiguated_ids)
 
     node_hashes = {
-        int(node): hash_node(graph, node)
+        int(node): hash_node(graph, node, cooc_alpha=0.0, position_alpha=0.0, nlp_alpha=1.0)
         for node in graph.nodes
     }
 
@@ -138,8 +138,10 @@ def get_similarity_matrix(graph, isnad_mention_ids, disambiguated_ids):
                 )
             )
             for disambiguated_id in disambiguated_ids
+            if disambiguated_id in graph.nodes
         ]
         for ambiguous_id in ambiguous_ids
+        if ambiguous_id in graph.nodes
     ])
 
     return SimilarityMatrix(matrix, ambiguous_ids, disambiguated_ids)
