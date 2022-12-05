@@ -6,7 +6,7 @@ import networkx as nx
 
 from helpers.data import read_isnad_data, split_data
 from helpers.graph import create_cooccurence_graph
-from helpers.features import get_similarity_matrix, SimilarityMatrix
+from helpers.features import SimilarityMatrix
 from helpers.utils import get_ambiguous_ids
 
 
@@ -38,9 +38,9 @@ def can_merge_neighborhoods(
     target_id: int,
     threshold: float,
 ):
-    print(f"can_merge_neighborhoods q={query_id} t={target_id}")
+    #print(f"can_merge_neighborhoods q={query_id} t={target_id}")
     if similarities[query_id, target_id] < threshold:
-        print("cannot merge, query doesn't match target")
+        #print("cannot merge, query doesn't match target")
         return False
 
     query_neighbor_ids = list(graph.successors(query_id)) + list(graph.predecessors(query_id))
@@ -48,11 +48,11 @@ def can_merge_neighborhoods(
 
     for query_neighbor_id in query_neighbor_ids:
         for target_neighbor_id in target_neighbor_ids:
-            print(f"qn: {query_neighbor_id} tn: {target_neighbor_id}: {similarities[query_neighbor_id, target_neighbor_id]}")
+            #print(f"qn: {query_neighbor_id} tn: {target_neighbor_id}: {similarities[query_neighbor_id, target_neighbor_id]}")
             if similarities[query_neighbor_id, target_neighbor_id] > threshold:
                 break
         else:
-            print(f"couldn't find matching neighbor for {query_neighbor_id}")
+            #print(f"couldn't find matching neighbor for {query_neighbor_id}")
             return False
 
 
@@ -76,7 +76,14 @@ def match_subgraphs(
         )
 
         # compute similarities
-        similarity_matrix = get_similarity_matrix(graph, _isnad_mention_ids, _disambiguated_ids)
+        similarity_matrix = SimilarityMatrix.from_data(
+            graph,
+            _isnad_mention_ids,
+            _disambiguated_ids,
+            cooc_alpha = None,
+            position_alpha = None,
+            nlp_alpha = 1.0,
+        )
         print(similarity_matrix)
 
         # find query and target ids with the highest similarity
@@ -91,8 +98,8 @@ def match_subgraphs(
                 threshold
             ):
                 _isnad_mention_ids, _disambiguated_ids = merge_nodes(
-                    _isnad_mention_ids,
-                    _disambiguated_ids,
+                    similarity_matrix.query_ids,
+                    similarity_matrix.target_ids,
                     query_id,
                     target_id
                 )
@@ -101,8 +108,8 @@ def match_subgraphs(
             # if nothing is mergable, start uniquely disambiguating
             query_id, _ = similarity_matrix.argmax()
             _isnad_mention_ids, _disambiguated_ids = merge_nodes(
-                _isnad_mention_ids,
-                _disambiguated_ids,
+                similarity_matrix.query_ids,
+                similarity_matrix.target_ids,
                 query_id,
                 target_id=None
             )
@@ -125,8 +132,6 @@ if __name__ == "__main__":
         for id in disambiguated_ids
         if id in sum(isnad_mention_ids, [])
     ]
-    print(isnad_mention_ids)
-    #print(disambiguated_ids)
 
     match_subgraphs(
         isnad_mention_ids,

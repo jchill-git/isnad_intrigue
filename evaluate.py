@@ -20,8 +20,6 @@ if __name__ == "__main__":
     # truncate for testing
     true_isnad_mention_ids = true_isnad_mention_ids[:5]
     test_mentions = test_mentions[:5]
-    print(true_isnad_mention_ids)
-    print(true_disambiguated_ids)
 
     # split
     test_mention_ids, test_disambiguated_ids = split_data(
@@ -30,8 +28,6 @@ if __name__ == "__main__":
         test_mentions=test_mentions,
         #test_size=0.9
     )
-    print(test_mention_ids)
-    print(test_disambiguated_ids)
 
     # evaluation
     match_subgraphs(
