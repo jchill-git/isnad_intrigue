@@ -34,7 +34,7 @@ if __name__ == "__main__":
         test_mention_ids,
         test_disambiguated_ids,
         isnad_mention_embeddings,
-        threshold=0.5
+        threshold=0.1
     )
 
     # pred_graph = merge_and_stuff(test_graph)

@@ -7,7 +7,7 @@ import networkx as nx
 from helpers.data import read_isnad_data, split_data
 from helpers.graph import create_cooccurence_graph
 from helpers.features import SimilarityMatrix
-from helpers.utils import get_ambiguous_ids
+from helpers.utils import get_ambiguous_ids, match_list_shape
 
 
 def merge_nodes(
@@ -19,6 +19,8 @@ def merge_nodes(
     if target_id is None:
         disambiguated_ids.append(query_id)
 
+        print(f"{query_id} -> unique")
+
     else:
         isnad_mention_ids_copy = isnad_mention_ids.copy()
 
@@ -26,7 +28,12 @@ def merge_nodes(
         query_index = mentions_flattened.index(query_id)
         mentions_flattened[query_index] = target_id
 
+        # consolodate disambiguated_ids
+        disambiguated_ids = [id for id in disambiguated_ids if id in mentions_flattened]
+
         isnad_mention_ids = match_list_shape(mentions_flattened, isnad_mention_ids_copy)
+
+        print(f"{query_id} -> {target_id}")
 
     return isnad_mention_ids, disambiguated_ids
 
@@ -43,6 +50,9 @@ def can_merge_neighborhoods(
         #print("cannot merge, query doesn't match target")
         return False
 
+    return True
+
+    graph_nodes = graph.nodes
     query_neighbor_ids = list(graph.successors(query_id)) + list(graph.predecessors(query_id))
     target_neighbor_ids = list(graph.successors(target_id)) + list(graph.predecessors(target_id))
 
@@ -66,8 +76,9 @@ def match_subgraphs(
     _isnad_mention_ids = isnad_mention_ids.copy()
     _disambiguated_ids = disambiguated_ids.copy()
 
-    progress = tqdm.tqdm(total=len(disambiguated_ids))
-    while len(_disambiguated_ids) > 0:
+    num_ambiguous_ids = len(sum(_isnad_mention_ids, [])) - len(_disambiguated_ids)
+    progress = tqdm.tqdm(total=num_ambiguous_ids)
+    while True:
         # create graph
         graph = create_cooccurence_graph(
             _isnad_mention_ids,
@@ -78,17 +89,22 @@ def match_subgraphs(
         # compute similarities
         similarity_matrix = SimilarityMatrix.from_data(
             graph,
-            _isnad_mention_ids,
-            _disambiguated_ids,
             cooc_alpha = None,
             position_alpha = None,
             nlp_alpha = 1.0,
         )
-        print(similarity_matrix)
+
+        # get ambiguous ids
+        _ambiguous_ids = get_ambiguous_ids(_isnad_mention_ids, _disambiguated_ids)
+        if len(_ambiguous_ids) <= 0:
+            break
+        print(f"_ambiguous_ids: {_ambiguous_ids}")
+
+        query_target_similarities = similarity_matrix.take_2d(_ambiguous_ids, _disambiguated_ids)
 
         # find query and target ids with the highest similarity
-        for query_id, target_id in similarity_matrix.argsort():
-
+        # TODO: come back and fix this crap
+        for query_id, target_id in query_target_similarities.argsort():
             # if they are mergable, merge
             if can_merge_neighborhoods(
                 graph,
@@ -98,22 +114,24 @@ def match_subgraphs(
                 threshold
             ):
                 _isnad_mention_ids, _disambiguated_ids = merge_nodes(
-                    similarity_matrix.query_ids,
-                    similarity_matrix.target_ids,
+                    _isnad_mention_ids,
+                    _disambiguated_ids,
                     query_id,
                     target_id
                 )
+                break
 
         else:
             # if nothing is mergable, start uniquely disambiguating
-            query_id, _ = similarity_matrix.argmax()
+            # take query_id, target_id, which is the lowest confidence pair
             _isnad_mention_ids, _disambiguated_ids = merge_nodes(
-                similarity_matrix.query_ids,
-                similarity_matrix.target_ids,
+                _isnad_mention_ids,
+                _disambiguated_ids,
                 query_id,
                 target_id=None
             )
 
+        num_ambiguous_ids = len(sum(_isnad_mention_ids, [])) - len(_disambiguated_ids)
         progress.update(1)
 
 

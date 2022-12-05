@@ -95,10 +95,12 @@ def split_data(
         mention_ids_flattened[index_to_ambiguate] = largest_mention_id + 1
         largest_mention_id += 1
 
+    # consolodate disambiguated_ids
+    disambiguated_ids = [id for id in disambiguated_ids if id in mention_ids_flattened]
+
     # reshape back to isnad_mention_ids shape
     test_isnad_mention_ids = match_list_shape(mention_ids_flattened, isnad_mention_ids)
 
-    # note disambiguated_ids is unchanged
     return test_isnad_mention_ids, disambiguated_ids
 
 
