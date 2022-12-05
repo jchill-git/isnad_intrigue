@@ -1,4 +1,4 @@
-from typing import List, Union, Tuple
+from typing import List, Union, Tuple, Optional
 
 import tqdm
 import numpy as np
@@ -14,12 +14,22 @@ def merge_nodes(
     isnad_mention_ids: List[List[int]],
     disambiguated_ids: List[int],
     query_id: int,
-    target_id: Union[int, None]
+    target_id: Union[int, None],
+    is_labeled: Optional[List[List[bool]]] = None,
 ) -> Tuple[List[List[int]], List[int]]:
     if target_id is None:
         disambiguated_ids.append(query_id)
 
-        print(f"{query_id} -> unique")
+        if is_labeled is not None:
+            mentions_flattened = sum(isnad_mention_ids, [])
+            query_index = mentions_flattened.index(query_id)
+
+            if sum(is_labeled, [])[query_index]:
+                print(f"{query_id} (labeled) -> unique")
+            else:
+                print(f"{query_id} -> unique")
+        else:
+            print(f"{query_id} -> unique")
 
     else:
         isnad_mention_ids_copy = isnad_mention_ids.copy()
@@ -33,7 +43,10 @@ def merge_nodes(
 
         isnad_mention_ids = match_list_shape(mentions_flattened, isnad_mention_ids_copy)
 
-        print(f"{query_id} -> {target_id}")
+        if is_labeled is not None and sum(is_labeled, [])[query_index]:
+            print(f"{query_id} (labeled) -> {target_id}")
+        else:
+            print(f"{query_id} -> {target_id}")
 
     return isnad_mention_ids, disambiguated_ids
 
@@ -44,38 +57,51 @@ def can_merge_neighborhoods(
     query_id: int,
     target_id: int,
     threshold: float,
+    check_neighbors: bool = True,
 ):
-    #print(f"can_merge_neighborhoods q={query_id} t={target_id}")
     if similarities[query_id, target_id] < threshold:
-        #print("cannot merge, query doesn't match target")
         return False
+
+    if not check_neighbors:
+        return True
 
     graph_nodes = graph.nodes
     query_neighbor_ids = list(graph.successors(query_id)) + list(graph.predecessors(query_id))
     target_neighbor_ids = list(graph.successors(target_id)) + list(graph.predecessors(target_id))
 
+    if len(target_neighbor_ids) == 0 or len(query_neighbor_ids) == 0:
+        return True
+
+    # If just one query neighbor doesn't match, this algo fails
+    # Could replace with jaccard index?
+    #print("checking neighbors...")
     for query_neighbor_id in query_neighbor_ids:
         for target_neighbor_id in target_neighbor_ids:
-            #print(f"qn: {query_neighbor_id} tn: {target_neighbor_id}: {similarities[query_neighbor_id, target_neighbor_id]}")
             if similarities[query_neighbor_id, target_neighbor_id] > threshold:
+                #print("matched neighbor! :)")
                 break
         else:
-            #print(f"couldn't find matching neighbor for {query_neighbor_id}")
+            #print("didn't match neighbor :(")
             return False
+
+    return True
 
 
 def match_subgraphs(
     isnad_mention_ids: List[List[int]],
     disambiguated_ids: List[int],
     isnad_mention_embeddings: List[List[List[float]]],
-    threshold: float
+    is_labeled: List[List[bool]],
+    threshold: float,
+    check_neighbors: bool = True,
+    **hash_kwargs,
 ):
     # avoid modifying inputs
     _isnad_mention_ids = isnad_mention_ids.copy()
     _disambiguated_ids = disambiguated_ids.copy()
 
-    num_ambiguous_ids = len(sum(_isnad_mention_ids, [])) - len(_disambiguated_ids)
-    progress = tqdm.tqdm(total=num_ambiguous_ids)
+    _ambiguous_ids = get_ambiguous_ids(_isnad_mention_ids, _disambiguated_ids)
+    progress = tqdm.tqdm(total=len(_ambiguous_ids))
     while True:
         # create graph
         graph = create_cooccurence_graph(
@@ -87,16 +113,13 @@ def match_subgraphs(
         # compute similarities
         similarity_matrix = SimilarityMatrix.from_data(
             graph,
-            cooc_alpha = None,
-            position_alpha = None,
-            nlp_alpha = 1.0,
+            **hash_kwargs
         )
 
-        # get ambiguous ids
+        # get ambiguous ids, break if there are no more left
         _ambiguous_ids = get_ambiguous_ids(_isnad_mention_ids, _disambiguated_ids)
         if len(_ambiguous_ids) <= 0:
             break
-        print(f"_ambiguous_ids: {_ambiguous_ids}")
 
         query_target_similarities = similarity_matrix.take_2d(_ambiguous_ids, _disambiguated_ids)
 
@@ -109,13 +132,15 @@ def match_subgraphs(
                 similarity_matrix,
                 query_id,
                 target_id,
-                threshold
+                threshold,
+                check_neighbors=check_neighbors,
             ):
                 _isnad_mention_ids, _disambiguated_ids = merge_nodes(
                     _isnad_mention_ids,
                     _disambiguated_ids,
                     query_id,
-                    target_id
+                    target_id,
+                    is_labeled=is_labeled,
                 )
                 break
 
@@ -126,7 +151,8 @@ def match_subgraphs(
                 _isnad_mention_ids,
                 _disambiguated_ids,
                 query_id,
-                target_id=None
+                target_id=None,
+                is_labeled=is_labeled,
             )
 
         num_ambiguous_ids = len(sum(_isnad_mention_ids, [])) - len(_disambiguated_ids)

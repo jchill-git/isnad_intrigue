@@ -6,6 +6,18 @@ import networkx as nx
 import matplotlib.pyplot as plt
 
 
+def get_mentions_str(
+    mentions: List[List[bool]],
+) -> List[str]:
+    labeled_mentions = []
+    for isnad_index, isnad in enumerate(mentions):
+        for mention_index, is_test in enumerate(mentions):
+            if is_test:
+                labeled_mentions.append(f"JK_000916_{isnad_index}_{mention_index}")
+
+    return labeled_mentions
+
+
 def max_list_of_lists(list_of_lists: List[List[Any]]):
     flattened = sum(list_of_lists, [])
     flattened_without_nones = [value for value in flattened if value is not None]
