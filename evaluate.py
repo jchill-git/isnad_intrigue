@@ -9,20 +9,19 @@ from helpers.evaluation import create_communities_file, createClusters, calc_con
 
 if __name__ == "__main__":
     # arguments
+    names_path = "nameData/names.csv"
     gold_path = "communities/goldStandard_goldTags.json"
     embeddings_path = "contrastive_embeddings.json"
     output_file_name = "test_communities.json"
+    test_mentions_path = "test_mentions.json"
 
-    # load in true data
+    # load in data
     true_isnad_mention_ids, true_disambiguated_ids, isnad_mention_embeddings = read_isnad_data(
-        "nameData/names.csv",
+        names_path,
         gold_path,
         embeddings_path
     )
-    labeled_mentions = get_labeled_mentions(true_isnad_mention_ids, true_disambiguated_ids)
-
-    # split into test graph
-    with open("test_mentions.json", "r") as test_mentions_file:
+    with open(test_mentions_path, "r") as test_mentions_file:
         test_mentions = json.load(test_mentions_file)
 
     # truncate for testing
@@ -47,6 +46,7 @@ if __name__ == "__main__":
     )
 
     # evaluation
+    #"""
     pred_mention_ids, pred_disambiguated_ids = match_subgraphs(
         test_mention_ids,
         test_disambiguated_ids,
@@ -58,9 +58,12 @@ if __name__ == "__main__":
         position_alpha = 0.0,
         nlp_alpha = 1.0,
     )
+    #"""
 
-    pred_mention_ids = true_isnad_mention_ids # truth
+    #pred_mention_ids = true_isnad_mention_ids # truth
     #pred_mention_ids = test_mention_ids # baseline
+
+    labeled_mentions = get_labeled_mentions(true_isnad_mention_ids, true_disambiguated_ids)
 
     # create community_file
     create_communities_file(output_file_name, pred_mention_ids, labeled_mentions=labeled_mentions)

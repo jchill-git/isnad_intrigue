@@ -12,8 +12,6 @@ def create_cooccurence_graph(
     self_edges: bool = False,
     max_isnads: Optional[int] = None,
 ):
-
-
     # truncate to max_isnads
     max_isnads = max_isnads or len(isnad_mention_ids)
     isnad_mention_ids = isnad_mention_ids[:max_isnads]

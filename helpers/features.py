@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 import networkx as nx
 import numpy as np
@@ -7,124 +7,100 @@ from helpers.graph import create_cooccurence_graph
 from helpers.utils import get_ambiguous_ids, show_graph
 
 
-class SimilarityMatrix():
+class SimilarityScorer():
     def __init__(
         self,
-        matrix: np.ndarray,
-        x_ids: List[int],
-        y_ids: List[int],
-    ):
-        self._matrix = matrix
-        self.x_index = {
-            id: index
-            for index, id in enumerate(x_ids)
-        }
-        self.x_id = x_ids
-        self.y_index = {
-            id: index
-            for index, id in enumerate(y_ids)
-        }
-        self.y_id = y_ids
-
-
-    @classmethod
-    def from_data(
-        cls,
         graph: nx.Graph,
         disambiguated_ids: List[int],
-        **hash_kwargs,
+        similarities: Optional[np.ndarray] = None,
+        **hash_kwargs
     ):
-        node_hashes = {
-            int(node): hash_node(graph, node, **hash_kwargs)
-            for node in graph.nodes
+        self.graph = graph
+        self.disambiguated_ids = disambiguated_ids
+        self.hash_kwargs = hash_kwargs
+
+        nodes = list(graph.nodes)
+
+        self.id_to_index = {
+            id: index
+            for index, id in enumerate(nodes)
         }
 
-        node_neighbors = {
-            int(node): list(graph.successors(node)) + list(graph.predecessors(node))
-            for node in graph.nodes
-        }
+        if similarities is not None:
+            self._similarities = similarities
+        else:
+            self._similarities = np.full((len(nodes), len(nodes)), np.nan, dtype=np.float16)
 
-        matrix = np.array([
+
+    def __getitem__(self, ids: Tuple[int, int]) -> float:
+        # unpack tuple, convert to indices
+        x_id, y_id = ids
+        x_index = self.id_to_index[x_id]
+        y_index = self.id_to_index[y_id]
+
+        # check memo
+        if not np.isnan(self._similarities[x_index][y_index]):
+            return self._similarities[x_index][y_index]
+        elif not np.isnan(self._similarities[y_index][x_index]):
+            return self._similarities[y_index][x_index]
+
+        # check id equivalence
+        elif x_id == y_id:
+            similarity = 1.0
+
+        # check disambiguated inequivalence
+        elif x_id in self.disambiguated_ids and y_id in self.disambiguated_ids:
+            similarity = 0.0
+
+        # check if direct neighbors
+        elif y_id in (list(self.graph.successors(x_id)) + list(self.graph.predecessors(x_id))):
+            similarity = 0.0
+
+        # otherwise, do hash
+        else:
+            x_hash = hash_node(self.graph, x_id, **self.hash_kwargs)
+            y_hash = hash_node(self.graph, y_id, **self.hash_kwargs)
+            similarity = cosine_similarity(x_hash, y_hash)
+
+        # memoize results
+        self._similarities[x_index][y_index] = similarity
+        self._similarities[y_index][x_index] = similarity
+
+        return similarity
+
+
+    def argsort_ids(self, x_ids, y_ids):
+        sub_similarities = np.array([
             [
-                1 if node_id_i == node_id_j else
-                0 if node_id_j in node_neighbors[node_id_i] else
-                0 if node_id_i in disambiguated_ids and node_id_j in disambiguated_ids else
-                cosine_similarity(
-                    node_hashes[node_id_i],
-                    node_hashes[node_id_j]
-                )
-                for node_id_j in graph.nodes
+                self[x_id, y_id]
+                for y_id in y_ids
             ]
-            for node_id_i in graph.nodes
+            for x_id in x_ids
         ])
 
-        node_ids = list(graph.nodes)
-
-        return cls(matrix, node_ids, node_ids)
-
-
-    def take_2d(self, x_ids, y_ids):
-        x_indices = [self.x_index[id] for id in x_ids]
-        y_indices = [self.y_index[id] for id in y_ids]
-        matrix = self._matrix[x_indices][:, y_indices]
-
-        return self.__class__(matrix, x_ids, y_ids)
-
-
-    def __getitem__(self, ids):
-        if isinstance(ids, tuple):
-            x_id, y_id = ids
-
-            x_index = self.x_index[x_id]
-            y_index = self.y_index[y_id]
-
-            return self._matrix[x_index, y_index]
-
-        else:
-            x_id = ids
-            x_index = self.x_index[x_id]
-            return self._matrix[x_index]
-
-
-    def argsort(self):
         # TODO: Come back and fix this crap
-        sorted_indexes = list(zip(*np.unravel_index(
-            np.argsort(self._matrix, axis=None),
-            self._matrix.shape
+        sorted_sub_indexes = list(zip(*np.unravel_index(
+            np.argsort(sub_similarities, axis=None),
+            sub_similarities.shape
         )))
-        return [
-            (self.x_id[x_index], self.y_id[y_index])
-            for x_index, y_index in sorted_indexes
+
+        sorted_ids = [
+            (x_ids[x_sub_index], y_ids[y_sub_index])
+            for x_sub_index, y_sub_index in sorted_sub_indexes
         ]
 
-
-    def argmax(self):
-        # TODO: Come back and fix this crap
-        x_index, y_index = np.unravel_index(
-            np.argmax(self._matrix, axis=None),
-            self._matrix.shape
-        )
-        return self.x_id[x_index], self.y_id[y_index]
+        return sorted_ids
 
 
     @property
     def shape(self):
-        return self._matrix.shape
+        return self._similarities.shape
+
 
     def __repr__(self):
-        representation = np.zeros((self._matrix.shape[0] + 1, self._matrix.shape[1] + 1))
-
-        representation[0, 1:] = list(self.x_id.values())
-        representation[1:, 0] = list(self.y_id.values())
-        representation[1:, 1:] = self._matrix
-
-        return "\n".join([
-            " ".join([
-                f"{value:.2f}"
-                for value in row
-            ])
-            for row in representation
-        ])
+        num_memoized = np.count_nonzero(~np.isnan(self._similarities))
+        total = self._similarities.size
+        return f"Similiarities({num_memoized} / {total} memoized)"
 
 
 def hash_node(

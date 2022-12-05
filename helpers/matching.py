@@ -6,7 +6,7 @@ import networkx as nx
 
 from helpers.data import read_isnad_data, split_data
 from helpers.graph import create_cooccurence_graph
-from helpers.features import SimilarityMatrix
+from helpers.features import SimilarityScorer
 from helpers.utils import get_ambiguous_ids, match_list_shape
 
 
@@ -53,7 +53,7 @@ def merge_nodes(
 
 def can_merge_neighborhoods(
     graph: nx.Graph,
-    similarities: SimilarityMatrix,
+    similarities: SimilarityScorer,
     query_id: int,
     target_id: int,
     threshold: float,
@@ -103,6 +103,11 @@ def match_subgraphs(
     _ambiguous_ids = get_ambiguous_ids(_isnad_mention_ids, _disambiguated_ids)
     progress = tqdm.tqdm(total=len(_ambiguous_ids))
     while True:
+        # get ambiguous ids, break if there are no more left
+        _ambiguous_ids = get_ambiguous_ids(_isnad_mention_ids, _disambiguated_ids)
+        if len(_ambiguous_ids) <= 0:
+            break
+
         # create graph
         graph = create_cooccurence_graph(
             _isnad_mention_ids,
@@ -111,26 +116,21 @@ def match_subgraphs(
         )
 
         # compute similarities
-        similarity_matrix = SimilarityMatrix.from_data(
+        similarities = SimilarityScorer(
             graph,
             _disambiguated_ids,
             **hash_kwargs
         )
 
-        # get ambiguous ids, break if there are no more left
-        _ambiguous_ids = get_ambiguous_ids(_isnad_mention_ids, _disambiguated_ids)
-        if len(_ambiguous_ids) <= 0:
-            break
-
-        query_target_similarities = similarity_matrix.take_2d(_ambiguous_ids, _disambiguated_ids)
-
         # find query and target ids with the highest similarity
-        # TODO: come back and fix this crap
-        for query_id, target_id in query_target_similarities.argsort():
+        for query_id, target_id in similarities.argsort_ids(
+            _ambiguous_ids,
+            _disambiguated_ids
+        ):
             # if they are mergable, merge
             if can_merge_neighborhoods(
                 graph,
-                similarity_matrix,
+                similarities,
                 query_id,
                 target_id,
                 threshold,
@@ -143,6 +143,7 @@ def match_subgraphs(
                     target_id,
                     is_labeled=is_labeled,
                 )
+                print(similarities)
                 break
 
         else:
@@ -155,8 +156,8 @@ def match_subgraphs(
                 target_id=None,
                 is_labeled=is_labeled,
             )
+            print(similarities)
 
-        num_ambiguous_ids = len(sum(_isnad_mention_ids, [])) - len(_disambiguated_ids)
         progress.update(1)
 
     return _isnad_mention_ids, _disambiguated_ids
