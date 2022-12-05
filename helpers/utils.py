@@ -24,8 +24,18 @@ def invert_list(values):
     values_flattened_inverted = [not values for values in values_flattened]
 
     return match_list_shape(values_flattened_inverted, values_copy)
-    
-    
+
+
+def get_ambiguous_ids(
+    isnad_mention_ids: List[List[int]],
+    disambiguated_ids: List[int]
+) -> List[int]:
+    unique_ids = np.unique(sum(isnad_mention_ids, []))
+    ambiguous_ids = [id for id in unique_ids if id not in disambiguated_ids]
+
+    return ambiguous_ids
+
+
 def show_graph(graph: nx.Graph, disambiguated_ids: List[int]):
     positions = nx.spring_layout(graph)
 

@@ -30,14 +30,17 @@ class NamesDataset(Dataset):
         # split data
         with open(test_mentions_path, "r") as test_mentions_file:
             test_mentions = json.load(test_mentions_file)
-        mentions_split = invert_list(test_mentions) if is_train else test_mentions
+        mentions_to_ambiguate = test_mentions if is_train else invert_list(test_mentions)
+
+        # train set: test -> ambiguous
+        # test set: train -> ambiguous
         isnad_mention_ids, disambiguated_ids = split_data(
             isnad_mention_ids,
             disambiguated_ids,
-            mentions_split
+            mentions_to_ambiguate
         )
 
-        # only include disambiguated samples
+        # remove ambigous samples
         isnad_names_flattened = sum(isnad_names, [])
         mention_ids_flattened = sum(isnad_mention_ids, [])
         names = []
@@ -116,7 +119,7 @@ if __name__ == "__main__":
         entity="kylesayrs",
         config={
             "pretrained_model": "lanwuwei/GigaBERT-v3-Arabic-and-English",
-            "num_epochs": 20,
+            "num_epochs": 6,
             "batch_size": 32,
             "max_length": 32,
             "learning_rate": 1e-6,
