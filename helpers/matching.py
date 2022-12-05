@@ -132,6 +132,8 @@ def match_subgraphs(
         num_ambiguous_ids = len(sum(_isnad_mention_ids, [])) - len(_disambiguated_ids)
         progress.update(1)
 
+    return _isnad_mention_ids, _disambiguated_ids
+
 
 if __name__ == "__main__":
     # load in data

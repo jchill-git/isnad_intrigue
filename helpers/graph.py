@@ -12,6 +12,8 @@ def create_cooccurence_graph(
     self_edges: bool = False,
     max_isnads: Optional[int] = None,
 ):
+
+
     # truncate to max_isnads
     max_isnads = max_isnads or len(isnad_mention_ids)
     isnad_mention_ids = isnad_mention_ids[:max_isnads]
@@ -24,41 +26,40 @@ def create_cooccurence_graph(
         _add_clique(graph, mention_ids, self_edges=self_edges)
 
 
-    # flattened list of mention embeddings and mention ids
+    #flattened list of mention embeddings and mention ids
     isnad_mention_embeddings_flattened = sum(isnad_mention_embeddings, [])
     isnad_mention_ids_flattened = sum(isnad_mention_ids, [])
 
-    num_mention_dictionary = {}
-    embeddings_dictionary = {}
+    #dictionary of the number of mentions captured by each node
+    num_mention_dictionary=dict()
+    #dictionary of node/mention ids to embeddings
+    embeddings_dictionary=dict()
     for mention_id, mention_embedding in zip(isnad_mention_ids_flattened, isnad_mention_embeddings_flattened):
-        # first mention, add node to dictionaries
+        #first mention, add node to dictionaries
         if mention_id not in embeddings_dictionary:
-            embeddings_dictionary[mention_id] = mention_embedding
-            num_mention_dictionary[mention_id] = 1
-
-        # subsequent mentions, average in the mention embedding and increment the number of nodes
+            embeddings_dictionary[mention_id]=mention_embedding
+            num_mention_dictionary[mention_id]=1
+        #subsequent mentions, average in the mention embedding and increment the number of nodes
         else:
-            # calculate new average embedding
-            curr_number_of_mentions=num_mention_dictionary[mention_id] + 1
-            updated_embedding = _update_embedding(
-                embeddings_dictionary[mention_id],
-                curr_number_of_mentions,
-                mention_embedding
-            )
+            curr_embedding=embeddings_dictionary[mention_id]
+            curr_number_of_mentions=num_mention_dictionary[mention_id]+1
 
-            # update dictionaries
-            embeddings_dictionary[mention_id] = updated_embedding
-            num_mention_dictionary[mention_id] = curr_number_of_mentions
+            #calculate new average embedding
+            updated_embedding=mean_embedding(curr_embedding,curr_number_of_mentions,mention_embedding)
+
+            #update dictionaries
+            embeddings_dictionary[mention_id]=updated_embedding
+            num_mention_dictionary[mention_id]=curr_number_of_mentions
 
     # label nodes with embeddings
-    nx.set_node_attributes(graph, embeddings_dictionary, "embedding")
+    nx.set_node_attributes(graph,embeddings_dictionary,'embedding')
 
     #label nodes with number of mentions
-    nx.set_node_attributes(graph, num_mention_dictionary, "number_of_mentions")
+    nx.set_node_attributes(graph,num_mention_dictionary,'number_of_mentions')
 
     return graph
 
-def _update_embedding(current_embedding, num_mentions, embedding_to_add):
+def mean_embedding(current_embedding, num_mentions, embedding_to_add):
     return [
         ((val * (num_mentions - 1) + new_val) )/ num_mentions
         for val, new_val in zip(current_embedding, embedding_to_add)
