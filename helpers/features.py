@@ -31,6 +31,7 @@ class SimilarityMatrix():
     def from_data(
         cls,
         graph: nx.Graph,
+        disambiguated_ids: List[int],
         **hash_kwargs,
     ):
         node_hashes = {
@@ -45,8 +46,10 @@ class SimilarityMatrix():
 
         matrix = np.array([
             [
-                0 if node_id_j in node_neighbors[node_id_i]
-                else cosine_similarity(
+                1 if node_id_i == node_id_j else
+                0 if node_id_j in node_neighbors[node_id_i] else
+                0 if node_id_i in disambiguated_ids and node_id_j in disambiguated_ids else
+                cosine_similarity(
                     node_hashes[node_id_i],
                     node_hashes[node_id_j]
                 )
@@ -122,7 +125,7 @@ class SimilarityMatrix():
             ])
             for row in representation
         ])
-        
+
 
 def hash_node(
     graph: nx.Graph,

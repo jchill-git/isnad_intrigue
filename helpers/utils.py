@@ -6,6 +6,22 @@ import networkx as nx
 import matplotlib.pyplot as plt
 
 
+
+def get_labeled_mentions(
+    true_isnad_mention_ids: List[List[int]],
+    true_disambiguated_ids: List[int]
+):
+    true_isnad_mention_ids_copy = true_isnad_mention_ids.copy()
+    mention_ids_flattened = sum(true_isnad_mention_ids, [])
+    labeled_mentions_flattened = [
+        mention_id in true_disambiguated_ids
+        for mention_id in mention_ids_flattened
+    ]
+
+    return match_list_shape(labeled_mentions_flattened, true_isnad_mention_ids_copy)
+
+
+
 def max_list_of_lists(list_of_lists: List[List[Any]]):
     flattened = sum(list_of_lists, [])
     flattened_without_nones = [value for value in flattened if value is not None]
