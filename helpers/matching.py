@@ -50,8 +50,6 @@ def can_merge_neighborhoods(
         #print("cannot merge, query doesn't match target")
         return False
 
-    return True
-
     graph_nodes = graph.nodes
     query_neighbor_ids = list(graph.successors(query_id)) + list(graph.predecessors(query_id))
     target_neighbor_ids = list(graph.successors(target_id)) + list(graph.predecessors(target_id))
