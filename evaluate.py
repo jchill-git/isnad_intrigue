@@ -53,7 +53,8 @@ if __name__ == "__main__":
         isnad_mention_embeddings,
         is_labeled = test_mentions,  # used for printing
         check_neighbors = False,
-        threshold = 0.4,
+        threshold = 0.7,
+        recomputation_schedule = (50, -1),
         cooc_alpha = 0.0,
         position_alpha = 0.0,
         nlp_alpha = 1.0,

@@ -87,12 +87,16 @@ def match_subgraphs(
     isnad_mention_embeddings: List[List[List[float]]],
     is_labeled: List[List[bool]],
     threshold: float,
+    recomputation_schedule: Optional[Tuple[float, float]] = (1, 0),
     check_neighbors: bool = True,
     **hash_kwargs,
 ):
     # avoid modifying inputs
     _isnad_mention_ids = isnad_mention_ids.copy()
     _disambiguated_ids = disambiguated_ids.copy()
+
+    # recomputation schedule
+    merges_until_recomputation, schedule_change = recomputation_schedule
 
     _ambiguous_ids = get_ambiguous_ids(_isnad_mention_ids, _disambiguated_ids)
     progress = tqdm.tqdm(total=len(_ambiguous_ids))
@@ -118,7 +122,9 @@ def match_subgraphs(
 
         # find query and target ids with the highest similarity
         ordered_id_pairs = similarities.argsort_ids(_ambiguous_ids, _disambiguated_ids)
-        #exit(0)
+        num_merged_since_recomputation = 0
+        merges_until_recomputation += schedule_change # update schedule
+        print(f"merges_until_recomputation: {merges_until_recomputation}")
         for query_id, target_id in ordered_id_pairs:
             # if they are mergable, merge
             if can_merge_neighborhoods(
@@ -136,7 +142,16 @@ def match_subgraphs(
                     target_id,
                     is_labeled=is_labeled,
                 )
-                break
+
+                # check whether to recompute features
+                num_merged_since_recomputation += 1
+                if (
+                    recomputation_schedule is not None and
+                    num_merged_since_recomputation < merges_until_recomputation
+                ):
+                    continue
+                else:
+                    break
 
         else:
             # if nothing is mergable, start uniquely disambiguating
@@ -149,7 +164,7 @@ def match_subgraphs(
                 is_labeled=is_labeled,
             )
 
-        progress.update(1)
+        progress.update(num_merged_since_recomputation)
 
     return _isnad_mention_ids, _disambiguated_ids
 
