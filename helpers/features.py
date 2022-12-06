@@ -7,8 +7,6 @@ from concurrent.futures import ThreadPoolExecutor, wait
 from helpers.graph import create_cooccurence_graph
 from helpers.utils import get_ambiguous_ids, show_graph, match_list_shape
 
-import time
-
 class SimilarityScorer():
     def __init__(
         self,
@@ -28,12 +26,10 @@ class SimilarityScorer():
             for index, id in enumerate(nodes)
         }
 
-        print("creating node hashes")
         self.node_hashes = {
             id: hash_node(self.graph, id, **hash_kwargs)
             for id in nodes
         }
-        print("created node hashes")
 
         if similarities is not None:
             self._similarities = similarities
@@ -81,11 +77,10 @@ class SimilarityScorer():
 
     def argsort_ids(self, x_ids, y_ids):
         print("argsort_ids")
-        import tqdm
 
         with ThreadPoolExecutor(max_workers=None) as executor:
             futures = [
-                executor.submit(self.__getitem__, (x_id, y_id))
+                [(x_id, y_id), executor.submit(self.__getitem__, (x_id, y_id))]
                 for x_id in x_ids
                 for y_id in y_ids
             ]
@@ -93,30 +88,15 @@ class SimilarityScorer():
 
         print("futures done")
 
-        results = [future.result() for future in futures]
-        print(results)
-
-        sub_similarities = [
-            [
-                None
-                for y_id in y_ids
-            ]
-            for x_id in x_ids
+        pair_similarities = [
+            [pair, future.result()]
+            for pair, future in futures
         ]
-        sub_similarities = match_list_shape(results, sub_similarities)
+        print("got future results")
 
-        sub_similarities = np.array(sub_similarities)
-
-        # TODO: Come back and fix this crap
-        sorted_sub_indexes = list(zip(*np.unravel_index(
-            np.argsort(sub_similarities, axis=None),
-            sub_similarities.shape
-        )))
-
-        sorted_ids = [
-            (x_ids[x_sub_index], y_ids[y_sub_index])
-            for x_sub_index, y_sub_index in sorted_sub_indexes
-        ]
+        sorted_ids_similarities = sorted(pair_similarities, key=lambda e: e[1], reverse=True)
+        print(sorted_ids_similarities[:20])
+        sorted_ids, _ = zip(*sorted_ids_similarities)
 
         return sorted_ids
 

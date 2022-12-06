@@ -62,27 +62,21 @@ def can_merge_neighborhoods(
     if similarities[query_id, target_id] < threshold:
         return False
 
-    if not check_neighbors:
-        return True
+    if check_neighbors:
+        query_neighbor_ids = list(graph.successors(query_id)) + list(graph.predecessors(query_id))
+        target_neighbor_ids = list(graph.successors(target_id)) + list(graph.predecessors(target_id))
 
-    graph_nodes = graph.nodes
-    query_neighbor_ids = list(graph.successors(query_id)) + list(graph.predecessors(query_id))
-    target_neighbor_ids = list(graph.successors(target_id)) + list(graph.predecessors(target_id))
+        if len(target_neighbor_ids) == 0 or len(query_neighbor_ids) == 0:
+            return True
 
-    if len(target_neighbor_ids) == 0 or len(query_neighbor_ids) == 0:
-        return True
-
-    # If just one query neighbor doesn't match, this algo fails
-    # Could replace with jaccard index?
-    #print("checking neighbors...")
-    for query_neighbor_id in query_neighbor_ids:
-        for target_neighbor_id in target_neighbor_ids:
-            if similarities[query_neighbor_id, target_neighbor_id] > threshold:
-                #print("matched neighbor! :)")
-                break
-        else:
-            #print("didn't match neighbor :(")
-            return False
+        # If just one query neighbor doesn't match, this algo fails
+        # Could replace with jaccard index?
+        for query_neighbor_id in query_neighbor_ids:
+            for target_neighbor_id in target_neighbor_ids:
+                if similarities[query_neighbor_id, target_neighbor_id] > threshold:
+                    break
+            else:
+                return False
 
     return True
 
@@ -123,11 +117,9 @@ def match_subgraphs(
         )
 
         # find query and target ids with the highest similarity
-        for query_id, target_id in similarities.argsort_ids(
-            _ambiguous_ids,
-            _disambiguated_ids
-        ):
-            print(similarities)
+        ordered_id_pairs = similarities.argsort_ids(_ambiguous_ids, _disambiguated_ids)
+        #exit(0)
+        for query_id, target_id in ordered_id_pairs:
             # if they are mergable, merge
             if can_merge_neighborhoods(
                 graph,

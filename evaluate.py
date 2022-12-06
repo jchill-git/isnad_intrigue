@@ -53,7 +53,7 @@ if __name__ == "__main__":
         isnad_mention_embeddings,
         is_labeled = test_mentions,  # used for printing
         check_neighbors = False,
-        threshold = 0.7,
+        threshold = 0.4,
         cooc_alpha = 0.0,
         position_alpha = 0.0,
         nlp_alpha = 1.0,
@@ -79,6 +79,7 @@ if __name__ == "__main__":
 
 
 # 2. not check ambiguous -> ambiguous neighbors
+# only update hashes of updated nodes
 
 # 3. replace similarity with generator - Kyle
 # 4. mulit-threading
