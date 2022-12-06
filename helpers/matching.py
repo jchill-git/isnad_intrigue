@@ -121,10 +121,12 @@ def match_subgraphs(
             **hash_kwargs
         )
 
+        # update schedule
+        num_merged_since_recomputation = 0
+        merges_until_recomputation = max(merges_until_recomputation + schedule_change, 0)
+
         # find query and target ids with the highest similarity
         ordered_id_pairs = similarities.argsort_ids(_ambiguous_ids, _disambiguated_ids)
-        num_merged_since_recomputation = 0
-        merges_until_recomputation += schedule_change # update schedule
         for query_id, target_id in ordered_id_pairs:
             print(f"{(query_id, target_id)}: {similarities[query_id, target_id]}")
             # if they are mergable, merge
