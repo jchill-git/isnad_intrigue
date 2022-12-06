@@ -2,11 +2,12 @@ from typing import List, Optional, Tuple
 
 import numpy as np
 import networkx as nx
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, wait
 
 from helpers.graph import create_cooccurence_graph
-from helpers.utils import get_ambiguous_ids, show_graph
+from helpers.utils import get_ambiguous_ids, show_graph, match_list_shape
 
+import time
 
 class SimilarityScorer():
     def __init__(
@@ -27,6 +28,13 @@ class SimilarityScorer():
             for index, id in enumerate(nodes)
         }
 
+        print("creating node hashes")
+        self.node_hashes = {
+            id: hash_node(self.graph, id, **hash_kwargs)
+            for id in nodes
+        }
+        print("created node hashes")
+
         if similarities is not None:
             self._similarities = similarities
         else:
@@ -36,6 +44,7 @@ class SimilarityScorer():
     def __getitem__(self, ids: Tuple[int, int]) -> float:
         # unpack tuple, convert to indices
         x_id, y_id = ids
+
         x_index = self.id_to_index[x_id]
         y_index = self.id_to_index[y_id]
 
@@ -59,8 +68,8 @@ class SimilarityScorer():
 
         # otherwise, do hash
         else:
-            x_hash = hash_node(self.graph, x_id, **self.hash_kwargs)
-            y_hash = hash_node(self.graph, y_id, **self.hash_kwargs)
+            x_hash = self.node_hashes[x_id]
+            y_hash = self.node_hashes[y_id]
             similarity = cosine_similarity(x_hash, y_hash)
 
         # memoize results
@@ -71,27 +80,32 @@ class SimilarityScorer():
 
 
     def argsort_ids(self, x_ids, y_ids):
+        print("argsort_ids")
         import tqdm
 
-        with ThreadPoolExecutor(max_workers=5) as executor:
-            sub_similarities = [
-                [
-                    executor.submit(self.__getitem__, (x_id, y_id))
-                    #self[x_id, y_id]
-                    for y_id in y_ids
-                ]
-                for x_id in tqdm.tqdm(x_ids)
+        with ThreadPoolExecutor(max_workers=None) as executor:
+            futures = [
+                executor.submit(self.__getitem__, (x_id, y_id))
+                for x_id in x_ids
+                for y_id in y_ids
             ]
+            print("created futures")
 
-            sub_similarities = [
-                [
-                    future.result()
-                    for future in row
-                ]
-                for row in tqdm.tqdm(sub_similarities)
+        print("futures done")
+
+        results = [future.result() for future in futures]
+        print(results)
+
+        sub_similarities = [
+            [
+                None
+                for y_id in y_ids
             ]
+            for x_id in x_ids
+        ]
+        sub_similarities = match_list_shape(results, sub_similarities)
 
-            sub_similarities = np.array(sub_similarities)
+        sub_similarities = np.array(sub_similarities)
 
         # TODO: Come back and fix this crap
         sorted_sub_indexes = list(zip(*np.unravel_index(
