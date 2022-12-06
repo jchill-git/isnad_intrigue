@@ -52,9 +52,9 @@ if __name__ == "__main__":
         test_disambiguated_ids,
         isnad_mention_embeddings,
         is_labeled = test_mentions,  # used for printing
-        check_neighbors = False,
-        threshold = 0.7,
-        recomputation_schedule = (50, -1),
+        check_neighbors = True,
+        threshold = 0.0,
+        recomputation_schedule = (50000, 0),
         computeless_threshold = 0.95,
         cooc_alpha = 0.0,
         position_alpha = 0.0,

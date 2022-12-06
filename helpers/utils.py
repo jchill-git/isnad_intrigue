@@ -5,6 +5,13 @@ import numpy as np
 import networkx as nx
 import matplotlib.pyplot as plt
 
+def index_2d_list(twod_list, target):
+    for x_index, oned_list in enumerate(twod_list):
+        for y_index, value in enumerate(oned_list):
+            if value == target:
+                return x_index, y_index
+
+    raise ValueError(f"could not find {target} in list of lists")
 
 
 def get_labeled_mentions(

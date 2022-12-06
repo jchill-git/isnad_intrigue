@@ -7,12 +7,13 @@ import networkx as nx
 from helpers.data import read_isnad_data, split_data
 from helpers.graph import create_cooccurence_graph
 from helpers.features import SimilarityScorer
-from helpers.utils import get_ambiguous_ids, match_list_shape
+from helpers.utils import get_ambiguous_ids, match_list_shape, index_2d_list
 
 
 def merge_nodes(
     isnad_mention_ids: List[List[int]],
     disambiguated_ids: List[int],
+    ambiguous_ids: List[int],
     query_id: int,
     target_id: Union[int, None],
     is_labeled: Optional[List[List[bool]]] = None,
@@ -21,10 +22,9 @@ def merge_nodes(
         disambiguated_ids.append(query_id)
 
         if is_labeled is not None:
-            mentions_flattened = sum(isnad_mention_ids, [])
-            query_index = mentions_flattened.index(query_id)
+            query_x_index, query_y_index = index_2d_list(isnad_mention_ids, query_id)
 
-            if sum(is_labeled, [])[query_index]:
+            if is_labeled[query_x_index][query_y_index]:
                 print(f"{query_id} (labeled) -> unique")
             else:
                 print(f"{query_id} -> unique")
@@ -32,23 +32,17 @@ def merge_nodes(
             print(f"{query_id} -> unique")
 
     else:
-        isnad_mention_ids_copy = isnad_mention_ids.copy()
+        query_x_index, query_y_index = index_2d_list(isnad_mention_ids, query_id)
+        isnad_mention_ids[query_x_index][query_y_index] = target_id
 
-        mentions_flattened = sum(isnad_mention_ids, [])
-        query_index = mentions_flattened.index(query_id)
-        mentions_flattened[query_index] = target_id
-
-        # consolodate disambiguated_ids
-        disambiguated_ids = [id for id in disambiguated_ids if id in mentions_flattened]
-
-        isnad_mention_ids = match_list_shape(mentions_flattened, isnad_mention_ids_copy)
-
-        if is_labeled is not None and sum(is_labeled, [])[query_index]:
+        if is_labeled is not None and is_labeled[query_x_index][query_y_index]:
             print(f"{query_id} (labeled) -> {target_id}")
         else:
             print(f"{query_id} -> {target_id}")
 
-    return isnad_mention_ids, disambiguated_ids
+    ambiguous_ids.remove(query_id)
+
+    return isnad_mention_ids, disambiguated_ids, ambiguous_ids
 
 
 def can_merge_neighborhoods(
@@ -128,7 +122,10 @@ def match_subgraphs(
         # find query and target ids with the highest similarity
         ordered_id_pairs = similarities.argsort_ids(_ambiguous_ids, _disambiguated_ids)
         for query_id, target_id in ordered_id_pairs:
-            print(f"{(query_id, target_id)}: {similarities[query_id, target_id]}")
+            # it's possible this node has already been merged since the last computation
+            if query_id not in _ambiguous_ids:
+                continue
+
             # if they are mergable, merge
             if can_merge_neighborhoods(
                 graph,
@@ -138,9 +135,10 @@ def match_subgraphs(
                 threshold,
                 check_neighbors=check_neighbors,
             ):
-                _isnad_mention_ids, _disambiguated_ids = merge_nodes(
+                _isnad_mention_ids, _disambiguated_ids, _ambiguous_ids = merge_nodes(
                     _isnad_mention_ids,
                     _disambiguated_ids,
+                    _ambiguous_ids,
                     query_id,
                     target_id,
                     is_labeled=is_labeled,
@@ -149,23 +147,36 @@ def match_subgraphs(
                 # check whether to recompute features
                 num_merged_since_recomputation += 1
                 if (
-                    num_merged_since_recomputation < merges_until_recomputation
+                    num_merged_since_recomputation < merges_until_recomputation or
                     similarities[query_id, target_id] >= computeless_threshold
                 ):
                     continue
                 else:
                     break
 
+        # if nothing is mergable, start uniquely disambiguating
         else:
-            # if nothing is mergable, start uniquely disambiguating
-            # take query_id, target_id, which is the lowest confidence pair
-            _isnad_mention_ids, _disambiguated_ids = merge_nodes(
-                _isnad_mention_ids,
-                _disambiguated_ids,
-                query_id,
-                target_id=None,
-                is_labeled=is_labeled,
-            )
+            for query_id, target_id in reversed(ordered_id_pairs):
+                # it's possible this node has already been merged since the last computation
+                if query_id not in _ambiguous_ids:
+                    continue
+
+                _isnad_mention_ids, _disambiguated_ids, _ambiguous_ids = merge_nodes(
+                    _isnad_mention_ids,
+                    _disambiguated_ids,
+                    _ambiguous_ids,
+                    query_id,
+                    target_id=None,
+                    is_labeled=is_labeled,
+                )
+
+                # check whether to recompute features
+                num_merged_since_recomputation += 1
+                if (
+                    num_merged_since_recomputation < merges_until_recomputation or
+                    similarities[query_id, target_id] >= computeless_threshold
+                ):
+                    continue
 
         progress.update(num_merged_since_recomputation)
 
