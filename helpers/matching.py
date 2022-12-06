@@ -88,6 +88,7 @@ def match_subgraphs(
     is_labeled: List[List[bool]],
     threshold: float,
     recomputation_schedule: Optional[Tuple[float, float]] = (1, 0),
+    computeless_threshold: Optional[float] = np.inf,
     check_neighbors: bool = True,
     **hash_kwargs,
 ):
@@ -124,8 +125,8 @@ def match_subgraphs(
         ordered_id_pairs = similarities.argsort_ids(_ambiguous_ids, _disambiguated_ids)
         num_merged_since_recomputation = 0
         merges_until_recomputation += schedule_change # update schedule
-        print(f"merges_until_recomputation: {merges_until_recomputation}")
         for query_id, target_id in ordered_id_pairs:
+            print(f"{(query_id, target_id)}: {similarities[query_id, target_id]}")
             # if they are mergable, merge
             if can_merge_neighborhoods(
                 graph,
@@ -146,8 +147,8 @@ def match_subgraphs(
                 # check whether to recompute features
                 num_merged_since_recomputation += 1
                 if (
-                    recomputation_schedule is not None and
                     num_merged_since_recomputation < merges_until_recomputation
+                    similarities[query_id, target_id] >= computeless_threshold
                 ):
                     continue
                 else:
