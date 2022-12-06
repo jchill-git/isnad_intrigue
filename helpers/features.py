@@ -1,11 +1,11 @@
 from typing import List, Optional, Tuple
 
-import networkx as nx
 import numpy as np
+import networkx as nx
+from concurrent.futures import ThreadPoolExecutor, wait
 
 from helpers.graph import create_cooccurence_graph
-from helpers.utils import get_ambiguous_ids, show_graph
-
+from helpers.utils import get_ambiguous_ids, show_graph, match_list_shape
 
 class SimilarityScorer():
     def __init__(
@@ -26,6 +26,11 @@ class SimilarityScorer():
             for index, id in enumerate(nodes)
         }
 
+        self.node_hashes = {
+            id: hash_node(self.graph, id, **hash_kwargs)
+            for id in nodes
+        }
+
         if similarities is not None:
             self._similarities = similarities
         else:
@@ -35,6 +40,7 @@ class SimilarityScorer():
     def __getitem__(self, ids: Tuple[int, int]) -> float:
         # unpack tuple, convert to indices
         x_id, y_id = ids
+
         x_index = self.id_to_index[x_id]
         y_index = self.id_to_index[y_id]
 
@@ -58,8 +64,8 @@ class SimilarityScorer():
 
         # otherwise, do hash
         else:
-            x_hash = hash_node(self.graph, x_id, **self.hash_kwargs)
-            y_hash = hash_node(self.graph, y_id, **self.hash_kwargs)
+            x_hash = self.node_hashes[x_id]
+            y_hash = self.node_hashes[y_id]
             similarity = cosine_similarity(x_hash, y_hash)
 
         # memoize results
@@ -70,24 +76,27 @@ class SimilarityScorer():
 
 
     def argsort_ids(self, x_ids, y_ids):
-        sub_similarities = np.array([
-            [
-                self[x_id, y_id]
+        print("argsort_ids")
+
+        with ThreadPoolExecutor(max_workers=None) as executor:
+            futures = [
+                [(x_id, y_id), executor.submit(self.__getitem__, (x_id, y_id))]
+                for x_id in x_ids
                 for y_id in y_ids
             ]
-            for x_id in x_ids
-        ])
+            print("created futures")
 
-        # TODO: Come back and fix this crap
-        sorted_sub_indexes = list(zip(*np.unravel_index(
-            np.argsort(sub_similarities, axis=None),
-            sub_similarities.shape
-        )))
+        print("futures done")
 
-        sorted_ids = [
-            (x_ids[x_sub_index], y_ids[y_sub_index])
-            for x_sub_index, y_sub_index in sorted_sub_indexes
+        pair_similarities = [
+            [pair, future.result()]
+            for pair, future in futures
         ]
+        print("got future results")
+
+        sorted_ids_similarities = sorted(pair_similarities, key=lambda e: e[1], reverse=True)
+        print(sorted_ids_similarities[:20])
+        sorted_ids, _ = zip(*sorted_ids_similarities)
 
         return sorted_ids
 

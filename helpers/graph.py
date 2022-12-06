@@ -83,9 +83,15 @@ def _create_isnad_graph(isnad_data):
 
 
 def _add_clique(graph, isnad_node_ids, self_edges=False):
+    # special case where it is a singleton isnad
+    if len(isnad_node_ids) == 1:
+        graph.add_node(isnad_node_ids[0], num_coocurrences=1, relative_position_sum=0)
+
+    # cycle around clique adding edges
     for node_index, node_id in enumerate(isnad_node_ids):
         for relative_position, next_node_id in enumerate(isnad_node_ids[node_index:]):
-            if not self_edges and node_id == next_node_id: continue
+            if not self_edges and relative_position == 0:
+                continue
 
             # if forward edge exists,
             # increment co-occurance and increase relative position

@@ -25,8 +25,8 @@ if __name__ == "__main__":
         test_mentions = json.load(test_mentions_file)
 
     # truncate for testing
-    true_isnad_mention_ids = true_isnad_mention_ids[:50]
-    test_mentions = test_mentions[:50]
+    true_isnad_mention_ids = true_isnad_mention_ids
+    test_mentions = test_mentions
 
     # split
     test_mention_ids, test_disambiguated_ids = split_data(
@@ -52,8 +52,10 @@ if __name__ == "__main__":
         test_disambiguated_ids,
         isnad_mention_embeddings,
         is_labeled = test_mentions,  # used for printing
-        check_neighbors = False,
-        threshold = 0.7,
+        check_neighbors = True,
+        threshold = 0.0,
+        recomputation_schedule = (50000, 0),
+        computeless_threshold = 0.95,
         cooc_alpha = 0.0,
         position_alpha = 0.0,
         nlp_alpha = 1.0,
@@ -79,6 +81,7 @@ if __name__ == "__main__":
 
 
 # 2. not check ambiguous -> ambiguous neighbors
+# only update hashes of updated nodes
 
 # 3. replace similarity with generator - Kyle
 # 4. mulit-threading
